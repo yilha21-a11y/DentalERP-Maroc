@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import prisma from '@/lib/prisma'
 import { requireAuthAndRole } from '@/lib/api-helpers'
+import { hasPermission } from '@/lib/permissions'
 
 export async function GET(req: NextRequest) {
   const { error, hospitalId, user } = await requireAuthAndRole()
@@ -48,9 +49,38 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
 
   if (body.action === 'createConversation') {
-    const participantIds = Array.isArray(body.participantIds) ? body.participantIds.map(String) : []
+    const requestedIds = Array.isArray(body.participantIds) ? body.participantIds.map(String) : []
+    const isBroadcast = Boolean(body.isBroadcast)
+
+    if (isBroadcast) {
+      const allowed = await hasPermission({ hospitalId, role: user.role, permission: 'messages.broadcast' })
+      if (!allowed) return NextResponse.json({ error: 'Diffusion générale non autorisée' }, { status: 403 })
+    }
+
+    let participantIds = requestedIds
+    if (isBroadcast) {
+      const users = await prisma.user.findMany({
+        where: { hospitalId, isActive: true },
+        select: { id: true },
+      })
+      participantIds = users.map((u) => u.id)
+    } else if (participantIds.length) {
+      const validUsers = await prisma.user.findMany({
+        where: { id: { in: participantIds }, hospitalId, isActive: true },
+        select: { id: true },
+      })
+      participantIds = validUsers.map((u) => u.id)
+    }
+
+    if (!isBroadcast && participantIds.length === 0) {
+      return NextResponse.json({ error: 'Sélectionnez au moins un destinataire' }, { status: 400 })
+    }
+
     const conversationId = randomUUID()
-    await prisma.$executeRawUnsafe(`INSERT INTO InternalConversation (id,hospitalId,name,isGroup,isBroadcast,createdById,createdAt,updatedAt) VALUES (?,?,?,?,?,?,NOW(3),NOW(3))`, conversationId, hospitalId, body.name || null, participantIds.length > 1, Boolean(body.isBroadcast), userId)
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO InternalConversation (id,hospitalId,name,isGroup,isBroadcast,createdById,createdAt,updatedAt) VALUES (?,?,?,?,?,?,NOW(3),NOW(3))`,
+      conversationId, hospitalId, body.name || null, participantIds.length > 1, isBroadcast, userId
+    )
     const allMembers = Array.from(new Set([userId, ...participantIds]))
     for (const memberId of allMembers) {
       await prisma.$executeRawUnsafe(`INSERT IGNORE INTO InternalConversationMember (id,conversationId,userId,joinedAt) VALUES (?,?,?,NOW(3))`, randomUUID(), conversationId, memberId)
@@ -65,7 +95,10 @@ export async function POST(req: NextRequest) {
   const member = await prisma.$queryRawUnsafe<any[]>(`SELECT id FROM InternalConversationMember WHERE conversationId=? AND userId=? LIMIT 1`, conversationId, userId)
   if (!member.length) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
 
-  await prisma.$executeRawUnsafe(`INSERT INTO InternalMessage (id,conversationId,senderId,body,attachmentUrl,isUrgent,createdAt) VALUES (?,?,?,?,?,?,NOW(3))`, randomUUID(), conversationId, userId, message, body.attachmentUrl || null, Boolean(body.isUrgent))
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO InternalMessage (id,conversationId,senderId,body,attachmentUrl,isUrgent,createdAt) VALUES (?,?,?,?,?,?,NOW(3))`,
+    randomUUID(), conversationId, userId, message, body.attachmentUrl || null, Boolean(body.isUrgent)
+  )
   await prisma.$executeRawUnsafe(`UPDATE InternalConversation SET updatedAt=NOW(3) WHERE id=? AND hospitalId=?`, conversationId, hospitalId)
   return NextResponse.json({ success: true })
 }
