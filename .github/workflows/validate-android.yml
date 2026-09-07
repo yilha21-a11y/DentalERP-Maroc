@@ -22,6 +22,6 @@ jobs:
         with:
           gradle-version: '9.1.0'
       - name: Install Android SDK platform
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37"
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36"
       - name: Compile Android debug app
         run: gradle -p android :app:assembleDebug --stacktrace
