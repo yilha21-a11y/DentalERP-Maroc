@@ -1,6 +1,5 @@
 package ma.dentalerp.app
 
-import com.google.gson.annotations.SerializedName
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -8,7 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
-
+import retrofit2.http.Query
 
 data class MobileLoginRequest(val email: String, val password: String)
 data class MobileUser(
@@ -47,12 +46,44 @@ data class TodayQueue(
 )
 data class TodayAppointmentsResponse(val queue: TodayQueue)
 
+data class ConversationSummary(
+    val id: String,
+    val name: String?,
+    val memberNames: String?,
+    val lastMessage: String?,
+    val unreadCount: Int = 0
+)
+data class ConversationsResponse(val success: Boolean, val data: List<ConversationSummary> = emptyList())
+
+data class DoctorMetric(
+    val doctorId: String,
+    val doctorName: String,
+    val patientsSeen: Double = 0.0,
+    val generatedRevenue: Double = 0.0,
+    val collectedRevenue: Double = 0.0,
+    val outstanding: Double = 0.0,
+    val noShowRate: Double = 0.0
+)
+data class DoctorReportResponse(
+    val success: Boolean,
+    val month: String,
+    val currency: String,
+    val scope: String,
+    val data: List<DoctorMetric> = emptyList()
+)
+
 interface DentalApi {
     @POST("api/auth/mobile-token")
     suspend fun login(@Body request: MobileLoginRequest): MobileLoginResponse
 
     @GET("api/appointments/today")
     suspend fun todayAppointments(): TodayAppointmentsResponse
+
+    @GET("api/internal-messages")
+    suspend fun conversations(): ConversationsResponse
+
+    @GET("api/reports/doctors")
+    suspend fun doctorReports(@Query("month") month: String): DoctorReportResponse
 }
 
 class TokenStore {
