@@ -12,6 +12,7 @@ export type Permission = (typeof PERMISSIONS)[number]
 const roleDefaults: Record<string, Permission[]> = {
   ADMIN: [...PERMISSIONS],
   DOCTOR: ['patients.view','patients.edit','clinical.view','clinical.edit','appointments.manage','queue.manage','reports.own','messages.use'],
+  ASSISTANT: ['patients.view','clinical.view','appointments.manage','queue.manage','inventory.manage','lab.manage','messages.use'],
   RECEPTIONIST: ['patients.view','patients.edit','appointments.manage','queue.manage','billing.view','billing.collect','messages.use'],
   ACCOUNTANT: ['billing.view','billing.collect','billing.discount','reports.all_doctors','export.data','messages.use'],
   LAB_TECH: ['patients.view','lab.manage','inventory.manage','messages.use'],
