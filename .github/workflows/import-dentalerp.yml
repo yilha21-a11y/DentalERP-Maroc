@@ -1,0 +1,62 @@
+name: Import DentalERP upstream
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/import-dentalerp.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout destination repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone DentalERP source
+        run: |
+          git clone --depth 1 https://github.com/abinauv/dental-erp.git /tmp/dental-erp
+          rsync -a --delete --exclude='.git' /tmp/dental-erp/ ./
+
+      - name: Preserve Morocco import workflow
+        run: |
+          mkdir -p .github/workflows
+          cat > .github/workflows/import-dentalerp.yml <<'EOF'
+          name: Import DentalERP upstream
+
+          on:
+            workflow_dispatch:
+
+          permissions:
+            contents: write
+
+          jobs:
+            import:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - name: Clone DentalERP source
+                  run: |
+                    git clone --depth 1 https://github.com/abinauv/dental-erp.git /tmp/dental-erp
+                    rsync -a --delete --exclude='.git' /tmp/dental-erp/ ./
+                - name: Commit imported source
+                  run: |
+                    git config user.name 'github-actions[bot]'
+                    git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+                    git add -A
+                    git commit -m 'Sync DentalERP upstream' || exit 0
+                    git push
+          EOF
+
+      - name: Commit imported source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Import DentalERP upstream source' || exit 0
+          git push
