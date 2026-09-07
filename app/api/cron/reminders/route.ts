@@ -43,10 +43,12 @@ export async function GET(req: Request) {
     if (minutesUntil >= 90 && minutesUntil <= 150) slot = '2H'
     if (!slot) continue
 
+    const offsetMs = slot === '24H' ? 24 * 60 * 60 * 1000 : 2 * 60 * 60 * 1000
+    const scheduledFor = new Date(when.getTime() - offsetMs)
     const already = appt.reminders.some((r) =>
       r.reminderType === 'WHATSAPP' &&
       r.status === 'SENT' &&
-      Math.abs(r.scheduledFor.getTime() - when.getTime()) < 30 * 60 * 1000
+      Math.abs(r.scheduledFor.getTime() - scheduledFor.getTime()) < 15 * 60 * 1000
     )
     if (already) { skipped++; continue }
 
@@ -54,7 +56,7 @@ export async function GET(req: Request) {
       data: {
         appointmentId: appt.id,
         reminderType: 'WHATSAPP',
-        scheduledFor: when,
+        scheduledFor,
         status: 'PENDING',
       },
     })
@@ -65,7 +67,9 @@ export async function GET(req: Request) {
         phone: appt.patient.phone,
         patientId: appt.patient.id,
         appointmentId: appt.id,
-        templateName: slot === '24H' ? (process.env.WHATSAPP_TEMPLATE_REMINDER_24H || 'rendez_vous_24h') : (process.env.WHATSAPP_TEMPLATE_REMINDER_2H || 'rendez_vous_2h'),
+        templateName: slot === '24H'
+          ? (process.env.WHATSAPP_TEMPLATE_REMINDER_24H || 'rendez_vous_24h')
+          : (process.env.WHATSAPP_TEMPLATE_REMINDER_2H || 'rendez_vous_2h'),
         components: [
           {
             type: 'body',
