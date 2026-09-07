@@ -3,37 +3,86 @@ import prisma from '@/lib/prisma'
 import { requireAuthAndRole } from '@/lib/api-helpers'
 
 export async function GET(req: NextRequest) {
-  const { error, hospitalId } = await requireAuthAndRole(['ADMIN', 'ACCOUNTANT', 'DOCTOR'])
-  if (error || !hospitalId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const { error, hospitalId, user } = await requireAuthAndRole(['ADMIN', 'ACCOUNTANT', 'DOCTOR'])
+  if (error || !hospitalId || !user) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
   const url = new URL(req.url)
   const month = url.searchParams.get('month') || new Date().toISOString().slice(0, 7)
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return NextResponse.json({ error: 'Mois invalide. Format attendu: YYYY-MM' }, { status: 400 })
+  }
+
   const start = new Date(`${month}-01T00:00:00`)
   const end = new Date(start)
   end.setMonth(end.getMonth() + 1)
 
+  const staffFilter = user.role === 'DOCTOR' ? ' AND s.userId = ?' : ''
+  const params: unknown[] = [
+    start, end,
+    start, end,
+    start, end,
+    start, end,
+    start, end,
+    start, end,
+    start, end,
+    start, end,
+    hospitalId,
+  ]
+  if (user.role === 'DOCTOR') params.push(user.id)
+
   const rows = await prisma.$queryRawUnsafe<any[]>(`
     SELECT
-      s.id doctorId,
-      CONCAT(s.firstName,' ',s.lastName) doctorName,
-      COUNT(DISTINCT a.id) appointments,
-      COUNT(DISTINCT CASE WHEN a.status='COMPLETED' THEN a.id END) completedAppointments,
-      COUNT(DISTINCT CASE WHEN a.status='NO_SHOW' THEN a.id END) noShows,
-      COUNT(DISTINCT t.patientId) patientsSeen,
-      COUNT(DISTINCT CASE WHEN p.createdAt >= ? AND p.createdAt < ? THEN p.id END) newPatients,
-      CAST(COALESCE(SUM(t.cost),0) AS DECIMAL(12,2)) generatedRevenue,
-      CAST(COALESCE(SUM(rc.amountPaid),0) AS DECIMAL(12,2)) collectedRevenue,
-      CAST(COALESCE(SUM(rc.amount - rc.amountPaid - rc.discount),0) AS DECIMAL(12,2)) outstanding,
-      CAST(COALESCE(AVG(TIMESTAMPDIFF(MINUTE,t.startTime,t.endTime)),0) AS DECIMAL(10,2)) avgTreatmentMinutes
+      s.id AS doctorId,
+      CONCAT(s.firstName,' ',s.lastName) AS doctorName,
+      COALESCE(a.appointments,0) AS appointments,
+      COALESCE(a.completedAppointments,0) AS completedAppointments,
+      COALESCE(a.noShows,0) AS noShows,
+      COALESCE(t.patientsSeen,0) AS patientsSeen,
+      COALESCE(t.newPatients,0) AS newPatients,
+      COALESCE(t.generatedRevenue,0) AS generatedRevenue,
+      COALESCE(rc.collectedRevenue,0) AS collectedRevenue,
+      COALESCE(rc.outstanding,0) AS outstanding,
+      COALESCE(t.avgTreatmentMinutes,0) AS avgTreatmentMinutes,
+      COALESCE(t.treatmentCount,0) AS treatmentCount,
+      CASE WHEN COALESCE(t.patientsSeen,0) > 0
+        THEN ROUND(COALESCE(t.generatedRevenue,0) / t.patientsSeen, 2)
+        ELSE 0 END AS avgRevenuePerPatient,
+      CASE WHEN COALESCE(a.appointments,0) > 0
+        THEN ROUND((COALESCE(a.noShows,0) / a.appointments) * 100, 1)
+        ELSE 0 END AS noShowRate
     FROM Staff s
-    LEFT JOIN Appointment a ON a.doctorId=s.id AND a.scheduledDate >= ? AND a.scheduledDate < ?
-    LEFT JOIN Treatment t ON t.doctorId=s.id AND t.createdAt >= ? AND t.createdAt < ?
-    LEFT JOIN Patient p ON p.id=t.patientId
-    LEFT JOIN ReceptionCharge rc ON rc.doctorId=s.id AND rc.sentAt >= ? AND rc.sentAt < ?
-    WHERE s.hospitalId=? AND s.isActive=1
-    GROUP BY s.id,s.firstName,s.lastName
+    LEFT JOIN (
+      SELECT doctorId,
+        COUNT(*) AS appointments,
+        SUM(status='COMPLETED') AS completedAppointments,
+        SUM(status='NO_SHOW') AS noShows
+      FROM Appointment
+      WHERE scheduledDate >= ? AND scheduledDate < ?
+      GROUP BY doctorId
+    ) a ON a.doctorId=s.id
+    LEFT JOIN (
+      SELECT t.doctorId,
+        COUNT(*) AS treatmentCount,
+        COUNT(DISTINCT t.patientId) AS patientsSeen,
+        COUNT(DISTINCT CASE WHEN p.createdAt >= ? AND p.createdAt < ? THEN p.id END) AS newPatients,
+        CAST(COALESCE(SUM(t.cost),0) AS DECIMAL(12,2)) AS generatedRevenue,
+        CAST(COALESCE(AVG(CASE WHEN t.startTime IS NOT NULL AND t.endTime IS NOT NULL THEN TIMESTAMPDIFF(MINUTE,t.startTime,t.endTime) END),0) AS DECIMAL(10,2)) AS avgTreatmentMinutes
+      FROM Treatment t
+      JOIN Patient p ON p.id=t.patientId
+      WHERE t.createdAt >= ? AND t.createdAt < ?
+      GROUP BY t.doctorId
+    ) t ON t.doctorId=s.id
+    LEFT JOIN (
+      SELECT doctorId,
+        CAST(COALESCE(SUM(amountPaid),0) AS DECIMAL(12,2)) AS collectedRevenue,
+        CAST(COALESCE(SUM(GREATEST(amount - amountPaid - discount,0)),0) AS DECIMAL(12,2)) AS outstanding
+      FROM ReceptionCharge
+      WHERE sentAt >= ? AND sentAt < ?
+      GROUP BY doctorId
+    ) rc ON rc.doctorId=s.id
+    WHERE s.hospitalId=? AND s.isActive=1 ${staffFilter}
     ORDER BY generatedRevenue DESC
-  `, start, end, start, end, start, end, start, end, hospitalId)
+  `, ...params)
 
-  return NextResponse.json({ success: true, month, currency: 'MAD', data: rows })
+  return NextResponse.json({ success: true, month, currency: 'MAD', scope: user.role === 'DOCTOR' ? 'own' : 'all', data: rows })
 }
