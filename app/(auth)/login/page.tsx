@@ -14,8 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast'
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('Veuillez saisir une adresse e-mail valide'),
+  password: z.string().min(6, 'Le mot de passe doit contenir au moins 6 caractères'),
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
@@ -48,8 +48,8 @@ function LoginForm() {
       if (result?.error) {
         toast({
           variant: 'destructive',
-          title: 'Login failed',
-          description: 'Invalid email or password. Please try again.',
+          title: 'Échec de la connexion',
+          description: 'E-mail ou mot de passe incorrect. Veuillez réessayer.',
         })
       } else {
         router.push(callbackUrl)
@@ -58,8 +58,8 @@ function LoginForm() {
     } catch {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Something went wrong. Please try again.',
+        title: 'Erreur',
+        description: 'Une erreur est survenue. Veuillez réessayer.',
       })
     } finally {
       setIsLoading(false)
@@ -74,13 +74,13 @@ function LoginForm() {
             D
           </div>
         </div>
-        <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-        <CardDescription>Sign in to your DentalERP account</CardDescription>
+        <CardTitle className="text-2xl font-bold">Bienvenue</CardTitle>
+        <CardDescription>Connectez-vous à votre compte DentalERP</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">E-mail</Label>
             <Input
               id="email"
               type="email"
@@ -91,11 +91,11 @@ function LoginForm() {
             {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Mot de passe</Label>
             <Input
               id="password"
               type="password"
-              placeholder="Enter your password"
+              placeholder="Saisissez votre mot de passe"
               {...register('password')}
               disabled={isLoading}
             />
@@ -105,21 +105,21 @@ function LoginForm() {
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Sign in
+            Se connecter
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm">
           <p className="text-muted-foreground">
-            Don&apos;t have an account?{' '}
+            Vous n&apos;avez pas de compte ?{' '}
             <a href="/signup" className="text-primary hover:underline">
-              Sign up for free
+              Créer un compte
             </a>
           </p>
         </div>
 
         <div className="mt-4 text-center text-xs text-muted-foreground border-t pt-4">
-          <p>Demo credentials:</p>
+          <p>Identifiants de démonstration :</p>
           <p className="font-mono mt-1">admin@demo-dental.com / Admin@123</p>
         </div>
       </CardContent>
@@ -138,8 +138,8 @@ export default function LoginPage() {
                 D
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-            <CardDescription>Loading...</CardDescription>
+            <CardTitle className="text-2xl font-bold">Bienvenue</CardTitle>
+            <CardDescription>Chargement...</CardDescription>
           </CardHeader>
         </Card>
       }
