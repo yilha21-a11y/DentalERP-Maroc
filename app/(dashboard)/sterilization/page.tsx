@@ -157,7 +157,7 @@ export default function SterilizationDashboardPage() {
               <BarChart3 className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">Reports</div>
+              <div className="text-2xl font-bold">Rapports</div>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 View compliance data <ArrowRight className="h-3 w-3" />
               </p>

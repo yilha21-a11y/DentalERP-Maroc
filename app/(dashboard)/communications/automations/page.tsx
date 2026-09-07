@@ -269,7 +269,7 @@ export default function AutomationsPage() {
     const ok = await confirm({
       title: 'Delete automation?',
       description: 'Are you sure you want to delete this automation?',
-      confirmLabel: 'Delete',
+      confirmLabel: 'Supprimer',
     })
     if (!ok) return
 

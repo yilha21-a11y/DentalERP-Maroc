@@ -58,6 +58,7 @@ export const navigation: NavSection[] = [
     title: 'Vue générale',
     items: [
       { title: 'Assistant IA', href: '/chat', icon: BotMessageSquare },
+      { title: 'Messages', href: '/messages', icon: MessageSquare },
       { title: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
     ],
   },
@@ -78,6 +79,12 @@ export const navigation: NavSection[] = [
             roles: ['ADMIN', 'RECEPTIONIST'],
           },
         ],
+      },
+      {
+        title: 'Salle d’attente',
+        href: '/waiting-room',
+        icon: Clock,
+        roles: ['ADMIN', 'DOCTOR', 'ASSISTANT', 'RECEPTIONIST'],
       },
       {
         title: 'Téléconsultations',
@@ -149,6 +156,12 @@ export const navigation: NavSection[] = [
           },
         ],
       },
+      {
+        title: 'Encaissements réception',
+        href: '/reception-charges',
+        icon: CreditCard,
+        roles: ['ADMIN', 'ACCOUNTANT', 'RECEPTIONIST', 'DOCTOR'],
+      },
     ],
   },
   {
@@ -177,12 +190,12 @@ export const navigation: NavSection[] = [
   {
     title: 'Opérations',
     items: [
-      { title: 'Stock', href: '/inventory', icon: Package, roles: ['ADMIN'] },
+      { title: 'Stock', href: '/inventory', icon: Package, roles: ['ADMIN', 'ASSISTANT', 'LAB_TECH'] },
       {
         title: 'Stérilisation',
         href: '/sterilization',
         icon: Shield,
-        roles: ['ADMIN', 'DOCTOR'],
+        roles: ['ADMIN', 'DOCTOR', 'ASSISTANT'],
         subItems: [
           { title: 'Tableau de bord', href: '/sterilization', icon: Shield },
           { title: 'Instruments', href: '/sterilization/instruments', icon: Package },
@@ -200,10 +213,10 @@ export const navigation: NavSection[] = [
         title: 'Laboratoire',
         href: '/lab',
         icon: FlaskConical,
-        roles: ['ADMIN', 'DOCTOR', 'LAB_TECH'],
+        roles: ['ADMIN', 'DOCTOR', 'ASSISTANT', 'LAB_TECH'],
       },
       {
-        title: 'Communications',
+        title: 'Communications patients',
         href: '/communications',
         icon: MessageSquare,
         roles: ['ADMIN', 'RECEPTIONIST'],
@@ -254,6 +267,12 @@ export const navigation: NavSection[] = [
         subItems: [
           { title: 'Vue générale', href: '/reports', icon: BarChart3 },
           {
+            title: 'Statistiques dentistes',
+            href: '/reports/doctors',
+            icon: TrendingUp,
+            roles: ['ADMIN', 'ACCOUNTANT', 'DOCTOR'],
+          },
+          {
             title: 'Journal d’audit',
             href: '/reports/audit-log',
             icon: Activity,
@@ -269,6 +288,7 @@ export const navigation: NavSection[] = [
         subItems: [
           { title: 'Général', href: '/settings', icon: Settings },
           { title: 'Guide de configuration', href: '/settings/setup-guide', icon: BookOpen },
+          { title: 'Rôles et permissions', href: '/settings/permissions', icon: Shield, roles: ['ADMIN'] },
           { title: 'Fonctions IA', href: '/settings/ai', icon: Sparkles },
           { title: 'Formulaires', href: '/settings/forms', icon: ClipboardCheck },
           { title: 'Intégrations', href: '/settings/integrations', icon: Link2 },

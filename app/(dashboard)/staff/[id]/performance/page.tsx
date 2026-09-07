@@ -141,9 +141,9 @@ export default function PerformancePage({ params }: { params: Promise<{ id: stri
   }, [resolvedParams.id, startDate, endDate])
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       maximumFractionDigits: 0,
     }).format(amount)
   }
@@ -281,7 +281,7 @@ export default function PerformancePage({ params }: { params: Promise<{ id: stri
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Prescriptions</p>
+                <p className="text-sm text-muted-foreground">Ordonnances</p>
                 <p className="text-2xl font-bold">{data.prescriptionsWritten}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">

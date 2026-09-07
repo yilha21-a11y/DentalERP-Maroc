@@ -343,7 +343,7 @@ export default function InsuranceClaimsPage() {
             <div className="flex gap-2 flex-wrap">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -385,7 +385,7 @@ export default function InsuranceClaimsPage() {
                 <TableHead className="text-right">Claimed</TableHead>
                 <TableHead className="text-right">Approved</TableHead>
                 <TableHead>Submitted</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -660,7 +660,7 @@ export default function InsuranceClaimsPage() {
                 <Button variant="outline" onClick={() => setDenialClaim(null)}>
                   Cancel
                 </Button>
-                <Button onClick={handleSaveDenialInfo}>Save</Button>
+                <Button onClick={handleSaveDenialInfo}>Enregistrer</Button>
               </div>
             </div>
           )}

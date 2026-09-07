@@ -77,9 +77,9 @@ export default function SuppliersPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       minimumFractionDigits: 0,
     }).format(amount)
   }
@@ -131,7 +131,7 @@ export default function SuppliersPage() {
       {/* Suppliers Table */}
       <div className="bg-background rounded-lg shadow overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center">Loading...</div>
+          <div className="p-8 text-center">Chargement...</div>
         ) : suppliers.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">No suppliers found</div>
         ) : (

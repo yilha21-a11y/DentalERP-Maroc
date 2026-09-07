@@ -140,8 +140,8 @@ export default function PatientsPage() {
             getData={() =>
               patients.map((p) => ({
                 'Patient ID': p.patientId,
-                'First Name': p.firstName,
-                'Last Name': p.lastName,
+                'Prénom': p.firstName,
+                'Nom': p.lastName,
                 Phone: p.phone,
                 Email: p.email || '',
                 Gender: p.gender,
@@ -176,7 +176,7 @@ export default function PatientsPage() {
             <div className="flex gap-2">
               <Select value={genderFilter} onValueChange={setGenderFilter}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Gender" />
+                  <SelectValue placeholder="Sexe" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Genders</SelectItem>
@@ -215,7 +215,7 @@ export default function PatientsPage() {
                 <TableHead>Patient ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead>Gender</TableHead>
+                <TableHead>Sexe</TableHead>
                 <TableHead>Age</TableHead>
                 <TableHead>Blood Group</TableHead>
                 <TableHead>Location</TableHead>

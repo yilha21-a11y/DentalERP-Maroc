@@ -202,7 +202,7 @@ export function PatientFormSubmissions({ patientId }: PatientFormSubmissionsProp
             <h4 className="font-semibold">Review</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label>Statut</Label>
                 <Select value={reviewStatus} onValueChange={setReviewStatus}>
                   <SelectTrigger>
                     <SelectValue placeholder="Set status..." />

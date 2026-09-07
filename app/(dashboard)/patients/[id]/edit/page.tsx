@@ -220,7 +220,7 @@ export default function EditPatientPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dateOfBirth">Date of Birth</Label>
+              <Label htmlFor="dateOfBirth">Date de naissance</Label>
               <Input
                 id="dateOfBirth"
                 type="date"
@@ -241,7 +241,7 @@ export default function EditPatientPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="gender">Gender</Label>
+              <Label htmlFor="gender">Sexe</Label>
               <Select value={form.gender} onValueChange={(v) => updateField('gender', v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select gender" />
@@ -308,7 +308,7 @@ export default function EditPatientPage() {
               />
             </div>
             <div className="space-y-2 md:col-span-2 lg:col-span-3">
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="address">Adresse</Label>
               <Textarea
                 id="address"
                 value={form.address}
@@ -318,12 +318,12 @@ export default function EditPatientPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
+              <Label htmlFor="city">Ville</Label>
               <Input
                 id="city"
                 value={form.city}
                 onChange={(e) => updateField('city', e.target.value)}
-                placeholder="City"
+                placeholder="Ville"
               />
             </div>
             <div className="space-y-2">
@@ -336,12 +336,12 @@ export default function EditPatientPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pincode">Pincode</Label>
+              <Label htmlFor="pincode">Code postal</Label>
               <Input
                 id="pincode"
                 value={form.pincode}
                 onChange={(e) => updateField('pincode', e.target.value)}
-                placeholder="Pincode"
+                placeholder="Code postal"
               />
             </div>
           </CardContent>

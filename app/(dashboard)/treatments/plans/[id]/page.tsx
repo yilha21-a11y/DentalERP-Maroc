@@ -331,7 +331,7 @@ export default function TreatmentPlanDetailPage({ params }: { params: Promise<{ 
                     <TableHead>Procedure</TableHead>
                     <TableHead>Teeth</TableHead>
                     <TableHead>Cost</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>

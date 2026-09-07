@@ -430,7 +430,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                     <TableHead className="w-[50%]">Description</TableHead>
                     <TableHead className="text-center">Qty</TableHead>
                     <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Montant</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -466,12 +466,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                 <div className="flex justify-end">
                   <div className="w-64 space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="text-muted-foreground">Sous-total</span>
                       <span>{formatCurrency(invoice.subtotal)}</span>
                     </div>
                     {Number(invoice.discountAmount) > 0 && (
                       <div className="flex justify-between text-green-600">
-                        <span>Discount</span>
+                        <span>Remise</span>
                         <span>-{formatCurrency(invoice.discountAmount)}</span>
                       </div>
                     )}
@@ -527,8 +527,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                       <TableHead>Payment</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Method</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Montant</TableHead>
+                      <TableHead>Statut</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -595,7 +595,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Status</span>
+                <span className="text-muted-foreground">Statut</span>
                 {getStatusBadge(invoice.status)}
               </div>
               <div className="flex items-center justify-between">
@@ -653,7 +653,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                   <span className="font-medium">{invoice.insuranceClaim.claimNumber}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Status</span>
+                  <span className="text-muted-foreground">Statut</span>
                   <Badge>{invoice.insuranceClaim.status}</Badge>
                 </div>
                 {invoice.insuranceClaim.approvedAmount && (
@@ -725,7 +725,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label>Amount</Label>
+              <Label>Montant</Label>
               <div className="relative">
                 <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input

@@ -321,7 +321,7 @@ function CostEstimate({
             </div>
           ))}
           <div className="flex justify-between text-xs text-muted-foreground pt-1">
-            <span>Subtotal</span>
+            <span>Sous-total</span>
             <span>₹{Number(result.subtotal || 0).toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">

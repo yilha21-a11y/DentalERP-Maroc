@@ -463,7 +463,7 @@ export default function ReferralsPage() {
                   <TableHead>Referrer</TableHead>
                   <TableHead>Referred Name</TableHead>
                   <TableHead>Referred Phone</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="w-[60px]">Actions</TableHead>
                 </TableRow>
@@ -681,7 +681,7 @@ export default function ReferralsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="POINTS">Points</SelectItem>
-                  <SelectItem value="DISCOUNT">Discount</SelectItem>
+                  <SelectItem value="DISCOUNT">Remise</SelectItem>
                   <SelectItem value="CREDIT">Credit</SelectItem>
                 </SelectContent>
               </Select>

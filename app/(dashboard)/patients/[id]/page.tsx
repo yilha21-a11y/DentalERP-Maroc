@@ -343,7 +343,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
     const ok = await confirm({
       title: 'Delete document?',
       description: 'Are you sure you want to delete this document?',
-      confirmLabel: 'Delete',
+      confirmLabel: 'Supprimer',
     })
     if (!ok) return
 
@@ -496,15 +496,15 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
           </TabsTrigger>
           <TabsTrigger value="appointments" className="gap-2">
             <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Appointments</span>
+            <span className="hidden sm:inline">Rendez-vous</span>
           </TabsTrigger>
           <TabsTrigger value="treatments" className="gap-2">
             <Stethoscope className="h-4 w-4" />
-            <span className="hidden sm:inline">Treatments</span>
+            <span className="hidden sm:inline">Traitements</span>
           </TabsTrigger>
           <TabsTrigger value="billing" className="gap-2">
             <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">Billing</span>
+            <span className="hidden sm:inline">Facturation</span>
           </TabsTrigger>
           <TabsTrigger value="forms" className="gap-2">
             <FileCheck className="h-4 w-4" />
@@ -529,7 +529,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Phone</p>
+                    <p className="text-sm text-muted-foreground">Téléphone</p>
                     <p>{patient.phone}</p>
                     {patient.alternatePhone && (
                       <p className="text-sm text-muted-foreground">{patient.alternatePhone}</p>
@@ -549,7 +549,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   <div className="flex items-center gap-3">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Address</p>
+                      <p className="text-sm text-muted-foreground">Adresse</p>
                       <p>{patient.address}</p>
                       <p className="text-sm text-muted-foreground">
                         {[patient.city, patient.state, patient.pincode].filter(Boolean).join(', ')}
@@ -568,11 +568,11 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Date of Birth</p>
+                    <p className="text-sm text-muted-foreground">Date de naissance</p>
                     <p>{format(new Date(patient.dateOfBirth), 'PPP')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Gender</p>
+                    <p className="text-sm text-muted-foreground">Sexe</p>
                     <p>{patient.gender}</p>
                   </div>
                   <div>
@@ -600,7 +600,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                       <p>{patient.emergencyContactName}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Phone</p>
+                      <p className="text-sm text-muted-foreground">Téléphone</p>
                       <p>{patient.emergencyContactPhone}</p>
                     </div>
                     <div>
@@ -690,12 +690,12 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Events</SelectItem>
-                  <SelectItem value="appointment">Appointments</SelectItem>
-                  <SelectItem value="treatment">Treatments</SelectItem>
-                  <SelectItem value="payment">Payments</SelectItem>
+                  <SelectItem value="appointment">Rendez-vous</SelectItem>
+                  <SelectItem value="treatment">Traitements</SelectItem>
+                  <SelectItem value="payment">Paiements</SelectItem>
                   <SelectItem value="document">Documents</SelectItem>
-                  <SelectItem value="prescription">Prescriptions</SelectItem>
-                  <SelectItem value="lab_order">Lab Orders</SelectItem>
+                  <SelectItem value="prescription">Ordonnances</SelectItem>
+                  <SelectItem value="lab_order">Commandes laboratoire</SelectItem>
                 </SelectContent>
               </Select>
             </CardHeader>
@@ -1133,7 +1133,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Appointments</CardTitle>
+                <CardTitle>Rendez-vous</CardTitle>
                 <CardDescription>Recent and upcoming appointments</CardDescription>
               </div>
               <Link href={`/appointments/new?patientId=${patient.id}`}>
@@ -1156,7 +1156,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                       <TableHead>Date & Time</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Doctor</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Statut</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1221,7 +1221,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                       <TableHead>Procedure</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Doctor</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Statut</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1278,9 +1278,9 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     <TableRow>
                       <TableHead>Invoice #</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
+                      <TableHead>Montant</TableHead>
                       <TableHead>Paid</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Statut</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

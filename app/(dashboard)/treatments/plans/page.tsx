@@ -189,7 +189,7 @@ export default function TreatmentPlansPage() {
             <div className="flex gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -227,7 +227,7 @@ export default function TreatmentPlansPage() {
                 <TableHead>Procedures</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead>Estimated Cost</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

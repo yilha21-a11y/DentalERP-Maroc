@@ -177,9 +177,9 @@ export default function TransactionsPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       minimumFractionDigits: 2,
     }).format(amount)
   }
@@ -242,7 +242,7 @@ export default function TransactionsPage() {
       {/* Transactions Table */}
       <div className="bg-background rounded-lg shadow overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center">Loading...</div>
+          <div className="p-8 text-center">Chargement...</div>
         ) : transactions.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">No transactions found</div>
         ) : (

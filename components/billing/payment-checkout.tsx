@@ -220,9 +220,9 @@ export function PaymentCheckout({
   }
 
   const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('en-IN', {
+    new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       minimumFractionDigits: 0,
     }).format(val)
 
@@ -253,7 +253,7 @@ export function PaymentCheckout({
               <div className="space-y-4">
                 <div className="rounded-lg border p-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Amount</span>
+                    <span className="text-muted-foreground">Montant</span>
                     <span className="font-semibold text-lg">{formatCurrency(amount)}</span>
                   </div>
                 </div>

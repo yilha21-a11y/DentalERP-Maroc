@@ -149,7 +149,7 @@ export default function VerifyEmailPage() {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold">Loading...</CardTitle>
+            <CardTitle className="text-2xl font-bold">Chargement...</CardTitle>
           </CardHeader>
         </Card>
       }

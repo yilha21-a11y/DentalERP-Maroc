@@ -556,7 +556,7 @@ export default function FinancialReportsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Doctor</TableHead>
-                    <TableHead className="text-center">Treatments</TableHead>
+                    <TableHead className="text-center">Traitements</TableHead>
                     <TableHead className="text-right">Avg. per Treatment</TableHead>
                     <TableHead className="text-right">Total Revenue</TableHead>
                   </TableRow>

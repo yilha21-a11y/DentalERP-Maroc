@@ -59,7 +59,7 @@ const SEGMENT_CONFIG: Record<
   { label: string; icon: any; color: string; bgColor: string; description: string }
 > = {
   new: {
-    label: 'New Patients',
+    label: 'Nouveaux patients',
     icon: UserPlus,
     color: 'text-cyan-700',
     bgColor: 'bg-cyan-50 border-cyan-200',
@@ -235,7 +235,7 @@ export default function SegmentsPage() {
                         <TableRow>
                           <TableHead>Patient ID</TableHead>
                           <TableHead>Name</TableHead>
-                          <TableHead>Phone</TableHead>
+                          <TableHead>Téléphone</TableHead>
                           <TableHead>Last Visit</TableHead>
                           <TableHead className="text-right">Total Spend</TableHead>
                         </TableRow>

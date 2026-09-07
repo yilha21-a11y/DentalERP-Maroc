@@ -371,7 +371,7 @@ export default function ProceduresSettingsPage() {
               </Select>
               <Select value={activeFilter} onValueChange={setActiveFilter}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -395,7 +395,7 @@ export default function ProceduresSettingsPage() {
                 <TableHead>Category</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Price</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -711,7 +711,7 @@ export default function ProceduresSettingsPage() {
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={actionLoading}>
-              {actionLoading ? 'Deleting...' : 'Delete'}
+              {actionLoading ? 'Deleting...' : 'Supprimer'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -187,7 +187,7 @@ export default function InstrumentsPage() {
     const ok = await confirm({
       title: 'Delete instrument?',
       description: 'Are you sure you want to delete this instrument?',
-      confirmLabel: 'Delete',
+      confirmLabel: 'Supprimer',
     })
     if (!ok) return
     try {
@@ -238,7 +238,7 @@ export default function InstrumentsPage() {
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder="Statut" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
@@ -291,7 +291,7 @@ export default function InstrumentsPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Serial #</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead className="text-right">Cycles</TableHead>
                   <TableHead>Last Sterilized</TableHead>

@@ -220,7 +220,7 @@ export default function VideoConsultationsPage() {
                 <TableHead>Appointment</TableHead>
                 <TableHead>Scheduled</TableHead>
                 <TableHead>Duration</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>

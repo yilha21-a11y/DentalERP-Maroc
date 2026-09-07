@@ -56,7 +56,7 @@ export default function IntegrationsPage() {
       toast({
         variant: 'destructive',
         title: 'Connection Failed',
-        description: messages[error] || 'An error occurred',
+        description: messages[error] || 'Une erreur est survenue',
       })
     }
   }, [searchParams, toast])
@@ -203,7 +203,7 @@ export default function IntegrationsPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Status</p>
+                  <p className="text-muted-foreground">Statut</p>
                   <p className="font-medium flex items-center gap-1">
                     <Check className="h-4 w-4 text-green-600" />
                     {calendarStatus.integration?.syncEnabled ? 'Sync Enabled' : 'Sync Disabled'}

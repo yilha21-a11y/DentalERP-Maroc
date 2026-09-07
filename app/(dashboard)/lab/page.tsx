@@ -283,9 +283,9 @@ export default function LabWorkPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       maximumFractionDigits: 0,
     }).format(amount)
   }
@@ -513,7 +513,7 @@ export default function LabWorkPage() {
                     <TableHead>Vendor</TableHead>
                     <TableHead>Order Date</TableHead>
                     <TableHead>Expected</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Cost</TableHead>
                     <TableHead className="text-right">Actions</TableHead>

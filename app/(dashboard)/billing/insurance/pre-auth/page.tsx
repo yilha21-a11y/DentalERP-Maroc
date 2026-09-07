@@ -239,7 +239,7 @@ export default function PreAuthorizationsPage() {
                     <TableHead>Procedures</TableHead>
                     <TableHead className="text-right">Est. Cost</TableHead>
                     <TableHead className="text-right">Approved</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="w-[50px]" />
                   </TableRow>

@@ -205,8 +205,8 @@ export default function StaffPage() {
             getData={() =>
               staff.map((m) => ({
                 'Employee ID': m.employeeId,
-                'First Name': m.firstName,
-                'Last Name': m.lastName,
+                'Prénom': m.firstName,
+                'Nom': m.lastName,
                 Phone: m.phone,
                 Email: m.email || '',
                 Role: roleLabels[m.user.role] || m.user.role,
@@ -267,7 +267,7 @@ export default function StaffPage() {
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -292,7 +292,7 @@ export default function StaffPage() {
                 <TableHead>Role</TableHead>
                 <TableHead>Specialization</TableHead>
                 <TableHead>Joined</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -485,7 +485,7 @@ export default function StaffPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeactivate} className="bg-red-600 hover:bg-red-700">
               Deactivate
             </AlertDialogAction>

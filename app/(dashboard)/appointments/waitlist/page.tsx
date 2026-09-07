@@ -193,7 +193,7 @@ export default function WaitlistPage() {
     const ok = await confirm({
       title: 'Remove from waitlist?',
       description: 'Remove this patient from the waitlist?',
-      confirmLabel: 'Delete',
+      confirmLabel: 'Supprimer',
     })
     if (!ok) return
     try {
@@ -224,7 +224,7 @@ export default function WaitlistPage() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Waitlist</h1>
+          <h1 className="text-3xl font-bold">Liste d’attente</h1>
           <p className="text-muted-foreground">Manage patients waiting for appointment slots</p>
         </div>
         <Dialog
@@ -458,7 +458,7 @@ export default function WaitlistPage() {
                   <TableHead>Doctor Preference</TableHead>
                   <TableHead>Preferred Days</TableHead>
                   <TableHead>Time</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead>Added</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>

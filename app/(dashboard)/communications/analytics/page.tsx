@@ -339,7 +339,7 @@ export default function CampaignAnalyticsPage() {
                     <TableRow>
                       <TableHead>Campaign</TableHead>
                       <TableHead>Channel</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Statut</TableHead>
                       <TableHead className="text-right">Recipients</TableHead>
                       <TableHead className="text-right">Sent</TableHead>
                       <TableHead className="text-right">Failed</TableHead>

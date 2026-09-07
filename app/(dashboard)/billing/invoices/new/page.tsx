@@ -485,7 +485,7 @@ export default function NewInvoicePage() {
                       <TableHead className="w-[40%]">Description</TableHead>
                       <TableHead className="text-center">Qty</TableHead>
                       <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Montant</TableHead>
                       <TableHead className="text-center">Taxable</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
@@ -584,7 +584,7 @@ export default function NewInvoicePage() {
             <CardContent className="space-y-4">
               {/* Discount */}
               <div className="space-y-2">
-                <Label>Discount</Label>
+                <Label>Remise</Label>
                 <div className="flex gap-2">
                   <Select
                     value={discountType}
@@ -630,12 +630,12 @@ export default function NewInvoicePage() {
               {/* Totals */}
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
+                  <span>Sous-total</span>
                   <span>{formatCurrency(totals.subtotal)}</span>
                 </div>
                 {totals.discountAmount > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount</span>
+                    <span>Remise</span>
                     <span>-{formatCurrency(totals.discountAmount)}</span>
                   </div>
                 )}

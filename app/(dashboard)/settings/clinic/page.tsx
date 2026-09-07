@@ -243,7 +243,7 @@ export default function ClinicSettingsPage() {
   }
 
   if (loading) {
-    return <div className="p-6">Loading...</div>
+    return <div className="p-6">Chargement...</div>
   }
 
   return (
@@ -411,7 +411,7 @@ export default function ClinicSettingsPage() {
         {/* Address */}
         <Card>
           <CardHeader>
-            <CardTitle>Address</CardTitle>
+            <CardTitle>Adresse</CardTitle>
             <CardDescription>Clinic location details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

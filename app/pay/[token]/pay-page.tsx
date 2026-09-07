@@ -132,7 +132,7 @@ export function PayPage({
       const options = {
         key: checkout.key,
         amount: checkout.amount,
-        currency: 'INR',
+        currency: 'MAD',
         name: hospital.name,
         description: `Payment for ${invoice.invoiceNo}`,
         order_id: checkout.orderId,

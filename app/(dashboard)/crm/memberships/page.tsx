@@ -229,7 +229,7 @@ export default function MembershipPlansPage() {
     const ok = await confirm({
       title: 'Delete plan?',
       description: 'Are you sure you want to delete this plan?',
-      confirmLabel: 'Delete',
+      confirmLabel: 'Supprimer',
     })
     if (!ok) return
     try {
@@ -512,7 +512,7 @@ export default function MembershipPlansPage() {
                     <TableHead>Start Date</TableHead>
                     <TableHead>End Date</TableHead>
                     <TableHead>Auto-Renew</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Statut</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
