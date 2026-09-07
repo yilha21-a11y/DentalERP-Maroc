@@ -8,7 +8,24 @@ export async function GET(req: NextRequest) {
   const userId = user?.id
   if (error || !hospitalId || !userId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   const conversationId = new URL(req.url).searchParams.get('conversationId')
-  if (!conversationId) return NextResponse.json({ error: 'conversationId requis' }, { status: 400 })
+
+  if (!conversationId) {
+    const conversations = await prisma.$queryRawUnsafe<any[]>(`
+      SELECT c.id,c.name,c.isGroup,c.isBroadcast,c.updatedAt,
+        COALESCE((SELECT m.body FROM InternalMessage m WHERE m.conversationId=c.id ORDER BY m.createdAt DESC LIMIT 1),'') lastMessage,
+        COALESCE((SELECT m.createdAt FROM InternalMessage m WHERE m.conversationId=c.id ORDER BY m.createdAt DESC LIMIT 1),c.createdAt) lastMessageAt,
+        (SELECT COUNT(*) FROM InternalMessage m WHERE m.conversationId=c.id AND m.senderId<>? AND (cm.lastReadAt IS NULL OR m.createdAt>cm.lastReadAt)) unreadCount,
+        GROUP_CONCAT(DISTINCT u.name ORDER BY u.name SEPARATOR ', ') memberNames
+      FROM InternalConversation c
+      JOIN InternalConversationMember cm ON cm.conversationId=c.id AND cm.userId=?
+      LEFT JOIN InternalConversationMember allm ON allm.conversationId=c.id
+      LEFT JOIN User u ON u.id=allm.userId AND u.id<>?
+      WHERE c.hospitalId=?
+      GROUP BY c.id,c.name,c.isGroup,c.isBroadcast,c.updatedAt,cm.lastReadAt,c.createdAt
+      ORDER BY lastMessageAt DESC
+    `, userId, userId, userId, hospitalId)
+    return NextResponse.json({ success: true, data: conversations })
+  }
 
   const members = await prisma.$queryRawUnsafe<any[]>(`SELECT id FROM InternalConversationMember WHERE conversationId=? AND userId=? LIMIT 1`, conversationId, userId)
   if (!members.length) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
