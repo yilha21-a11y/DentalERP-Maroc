@@ -454,7 +454,7 @@ export default function PaymentPlanDetailPage({ params }: { params: Promise<{ id
               <span>{plan.patient.patientId}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Phone</span>
+              <span className="text-muted-foreground">Téléphone</span>
               <span>{plan.patient.phone}</span>
             </div>
             {plan.patient.email && (
@@ -550,8 +550,8 @@ export default function PaymentPlanDetailPage({ params }: { params: Promise<{ id
               <TableRow>
                 <TableHead className="w-[60px]">#</TableHead>
                 <TableHead>Due Date</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Montant</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead>Paid Date</TableHead>
                 <TableHead>Paid Amount</TableHead>
                 <TableHead>Payment Method</TableHead>

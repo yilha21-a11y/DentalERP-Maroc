@@ -100,7 +100,7 @@ export default function FormsSettingsPage() {
     const ok = await confirm({
       title: 'Delete Template',
       description: `Delete "${name}"? Templates with submissions will be deactivated instead.`,
-      confirmLabel: 'Delete',
+      confirmLabel: 'Supprimer',
     })
     if (!ok) return
 
@@ -141,7 +141,7 @@ export default function FormsSettingsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            <div className="text-center py-8 text-muted-foreground">Chargement...</div>
           ) : templates.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
@@ -167,7 +167,7 @@ export default function FormsSettingsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead className="text-right">Submissions</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="w-[60px]"></TableHead>

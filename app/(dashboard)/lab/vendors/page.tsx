@@ -260,7 +260,7 @@ export default function LabVendorsPage() {
     const ok = await confirm({
       title: 'Delete Vendor',
       description: 'Are you sure you want to delete this vendor?',
-      confirmLabel: 'Delete',
+      confirmLabel: 'Supprimer',
     })
     if (!ok) return
 
@@ -436,7 +436,7 @@ export default function LabVendorsPage() {
                     <TableHead>Specializations</TableHead>
                     <TableHead>Turnaround</TableHead>
                     <TableHead>Rating</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -617,7 +617,7 @@ export default function LabVendorsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="address">Adresse</Label>
               <Textarea
                 id="address"
                 value={formData.address}
@@ -628,7 +628,7 @@ export default function LabVendorsPage() {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
+                <Label htmlFor="city">Ville</Label>
                 <Input
                   id="city"
                   value={formData.city}
@@ -644,7 +644,7 @@ export default function LabVendorsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pincode">Pincode</Label>
+                <Label htmlFor="pincode">Code postal</Label>
                 <Input
                   id="pincode"
                   value={formData.pincode}
@@ -696,7 +696,7 @@ export default function LabVendorsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status">Statut</Label>
                 <Select
                   value={formData.status}
                   onValueChange={(value) =>

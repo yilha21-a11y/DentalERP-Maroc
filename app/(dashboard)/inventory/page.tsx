@@ -220,9 +220,9 @@ export default function InventoryPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       minimumFractionDigits: 2,
     }).format(amount)
   }
@@ -232,7 +232,7 @@ export default function InventoryPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Stock</h1>
           <p className="text-muted-foreground">Manage inventory items and stock levels</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -483,7 +483,7 @@ export default function InventoryPage() {
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder="Statut" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>

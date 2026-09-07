@@ -204,7 +204,7 @@ export default function TreatmentsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Treatments</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Traitements</h1>
           <p className="text-muted-foreground">Manage patient treatments and clinical records</p>
         </div>
         <div className="flex gap-2">
@@ -263,7 +263,7 @@ export default function TreatmentsPage() {
             <div className="flex gap-2 flex-wrap">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -313,7 +313,7 @@ export default function TreatmentsPage() {
                 <TableHead>Doctor</TableHead>
                 <TableHead>Teeth</TableHead>
                 <TableHead>Cost</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

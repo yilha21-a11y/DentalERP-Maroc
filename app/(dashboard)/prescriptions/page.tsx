@@ -76,7 +76,7 @@ export default function PrescriptionsPage() {
     const ok = await confirm({
       title: 'Delete Prescription',
       description: `Delete prescription ${rx.prescriptionNo}?`,
-      confirmLabel: 'Delete',
+      confirmLabel: 'Supprimer',
     })
     if (!ok) return
     try {

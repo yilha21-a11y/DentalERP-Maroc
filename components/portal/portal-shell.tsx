@@ -37,11 +37,11 @@ interface PortalShellProps {
 }
 
 const navItems = [
-  { href: '/portal', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/portal/appointments', label: 'Appointments', icon: Calendar },
+  { href: '/portal', label: 'Tableau de bord', icon: LayoutDashboard },
+  { href: '/portal/appointments', label: 'Rendez-vous', icon: Calendar },
   { href: '/portal/records', label: 'Records', icon: FileText },
   { href: '/portal/bills', label: 'Bills', icon: CreditCard },
-  { href: '/portal/prescriptions', label: 'Prescriptions', icon: Pill },
+  { href: '/portal/prescriptions', label: 'Ordonnances', icon: Pill },
   { href: '/portal/forms', label: 'Forms', icon: ClipboardCheck },
   { href: '/portal/book', label: 'Book Appointment', icon: CalendarPlus },
   { href: '/portal/upload-photo', label: 'Upload Photo', icon: Camera },

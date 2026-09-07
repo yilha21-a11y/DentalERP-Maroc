@@ -145,9 +145,9 @@ export default function StaffDetailPage({ params }: { params: Promise<{ id: stri
 
   const formatCurrency = (amount: number | null) => {
     if (amount === null) return '-'
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       maximumFractionDigits: 0,
     }).format(amount)
   }
@@ -297,11 +297,11 @@ export default function StaffDetailPage({ params }: { params: Promise<{ id: stri
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Date of Birth</p>
+                    <p className="text-sm text-muted-foreground">Date de naissance</p>
                     <p className="font-medium">{formatDate(staff.dateOfBirth)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Gender</p>
+                    <p className="text-sm text-muted-foreground">Sexe</p>
                     <p className="font-medium">{staff.gender || '-'}</p>
                   </div>
                 </div>
@@ -365,19 +365,19 @@ export default function StaffDetailPage({ params }: { params: Promise<{ id: stri
                         <p className="text-2xl font-bold text-blue-700">
                           {staff._count.appointments}
                         </p>
-                        <p className="text-sm text-blue-600">Appointments</p>
+                        <p className="text-sm text-blue-600">Rendez-vous</p>
                       </div>
                       <div className="text-center p-3 bg-green-50 rounded-lg">
                         <p className="text-2xl font-bold text-green-700">
                           {staff._count.treatments}
                         </p>
-                        <p className="text-sm text-green-600">Treatments</p>
+                        <p className="text-sm text-green-600">Traitements</p>
                       </div>
                       <div className="text-center p-3 bg-purple-50 rounded-lg">
                         <p className="text-2xl font-bold text-purple-700">
                           {staff._count.prescriptions}
                         </p>
-                        <p className="text-sm text-purple-600">Prescriptions</p>
+                        <p className="text-sm text-purple-600">Ordonnances</p>
                       </div>
                     </div>
                   </>

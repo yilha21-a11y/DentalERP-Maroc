@@ -97,7 +97,7 @@ export default function PrescriptionDetailPage() {
     const ok = await confirm({
       title: 'Delete Prescription',
       description: 'Delete this prescription? This action cannot be undone.',
-      confirmLabel: 'Delete',
+      confirmLabel: 'Supprimer',
     })
     if (!ok) return
     try {

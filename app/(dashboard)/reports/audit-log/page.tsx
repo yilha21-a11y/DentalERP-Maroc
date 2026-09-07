@@ -153,7 +153,7 @@ export default function AuditLogPage() {
             <SelectItem value="all">All Actions</SelectItem>
             <SelectItem value="CREATE">Create</SelectItem>
             <SelectItem value="UPDATE">Update</SelectItem>
-            <SelectItem value="DELETE">Delete</SelectItem>
+            <SelectItem value="DELETE">Supprimer</SelectItem>
             <SelectItem value="LOGIN">Login</SelectItem>
           </SelectContent>
         </Select>

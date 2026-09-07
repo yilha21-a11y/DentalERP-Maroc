@@ -319,7 +319,7 @@ export default function AttendancePage() {
               <TableRow>
                 <TableHead>Employee</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead>Clock In</TableHead>
                 <TableHead>Clock Out</TableHead>
                 <TableHead className="text-right">Actions</TableHead>

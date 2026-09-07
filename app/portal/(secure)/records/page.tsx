@@ -41,7 +41,7 @@ export default function PatientRecords() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="treatments">Treatments</TabsTrigger>
+          <TabsTrigger value="treatments">Traitements</TabsTrigger>
           <TabsTrigger value="chart">Dental Chart</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>

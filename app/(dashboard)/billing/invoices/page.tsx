@@ -166,7 +166,7 @@ export default function InvoicesPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Factures</h1>
           <p className="text-muted-foreground">Manage patient invoices and billing</p>
         </div>
         <Link href="/billing/invoices/new">
@@ -193,7 +193,7 @@ export default function InvoicesPage() {
             <div className="flex gap-2 flex-wrap">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -241,11 +241,11 @@ export default function InvoicesPage() {
               <TableRow>
                 <TableHead>Invoice</TableHead>
                 <TableHead>Patient</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Montant</TableHead>
                 <TableHead className="text-right">Paid</TableHead>
                 <TableHead className="text-right">Balance</TableHead>
                 <TableHead>Due Date</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

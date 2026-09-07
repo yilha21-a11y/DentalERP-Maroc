@@ -745,7 +745,7 @@ export default function BillingPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Payment Plans</CardTitle>
+                <CardTitle>Plans de paiement</CardTitle>
                 <CardDescription>Installment plan overview</CardDescription>
               </div>
               <Link href="/billing/payment-plans">

@@ -37,9 +37,9 @@ export default function InventoryReportsPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       minimumFractionDigits: 0,
     }).format(amount)
   }
@@ -485,7 +485,7 @@ export default function InventoryReportsPage() {
       {/* Report Content */}
       <div className="mt-6">
         {loading ? (
-          <div className="bg-background rounded-lg shadow p-8 text-center">Loading...</div>
+          <div className="bg-background rounded-lg shadow p-8 text-center">Chargement...</div>
         ) : (
           <>
             {activeReport === 'summary' && renderSummaryReport()}

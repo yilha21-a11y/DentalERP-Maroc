@@ -496,11 +496,11 @@ export function DentalChart({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              {dialogMode === 'view' ? 'Close' : 'Cancel'}
+              {dialogMode === 'view' ? 'Close' : 'Annuler'}
             </Button>
             {dialogMode !== 'view' && (
               <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : 'Save'}
+                {isSubmitting ? 'Saving...' : 'Enregistrer'}
               </Button>
             )}
           </DialogFooter>

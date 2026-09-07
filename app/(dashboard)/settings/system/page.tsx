@@ -120,19 +120,19 @@ export default function SystemSettingsPage() {
                   </div>
                   <div className="text-center p-4 bg-green-50 rounded-lg">
                     <p className="text-3xl font-bold text-green-600">{backupStats.appointments}</p>
-                    <p className="text-sm text-muted-foreground">Appointments</p>
+                    <p className="text-sm text-muted-foreground">Rendez-vous</p>
                   </div>
                   <div className="text-center p-4 bg-purple-50 rounded-lg">
                     <p className="text-3xl font-bold text-purple-600">{backupStats.treatments}</p>
-                    <p className="text-sm text-muted-foreground">Treatments</p>
+                    <p className="text-sm text-muted-foreground">Traitements</p>
                   </div>
                   <div className="text-center p-4 bg-yellow-50 rounded-lg">
                     <p className="text-3xl font-bold text-yellow-600">{backupStats.invoices}</p>
-                    <p className="text-sm text-muted-foreground">Invoices</p>
+                    <p className="text-sm text-muted-foreground">Factures</p>
                   </div>
                   <div className="text-center p-4 bg-red-50 rounded-lg">
                     <p className="text-3xl font-bold text-red-600">{backupStats.payments}</p>
-                    <p className="text-sm text-muted-foreground">Payments</p>
+                    <p className="text-sm text-muted-foreground">Paiements</p>
                   </div>
                   <div className="text-center p-4 bg-indigo-50 rounded-lg">
                     <p className="text-3xl font-bold text-indigo-600">
@@ -146,7 +146,7 @@ export default function SystemSettingsPage() {
                   </div>
                   <div className="text-center p-4 bg-teal-50 rounded-lg">
                     <p className="text-3xl font-bold text-teal-600">{backupStats.labOrders}</p>
-                    <p className="text-sm text-muted-foreground">Lab Orders</p>
+                    <p className="text-sm text-muted-foreground">Commandes laboratoire</p>
                   </div>
                 </div>
               ) : (

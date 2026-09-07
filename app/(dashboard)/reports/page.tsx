@@ -245,9 +245,9 @@ export default function ReportsPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       maximumFractionDigits: 0,
     }).format(amount)
   }
@@ -352,7 +352,7 @@ export default function ReportsPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">New Patients</CardTitle>
+                <CardTitle className="text-sm font-medium">Nouveaux patients</CardTitle>
                 <UserCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -403,7 +403,7 @@ export default function ReportsPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
+                <CardTitle className="text-sm font-medium">Total patients</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -944,7 +944,7 @@ export default function ReportsPage() {
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-center text-muted-foreground py-8">No revenue data available</p>
+                <p className="text-center text-muted-foreground py-8">Aucune donnée de chiffre d’affaires disponible</p>
               )}
             </CardContent>
           </Card>
@@ -1058,11 +1058,11 @@ export default function ReportsPage() {
                       </div>
                       <div className="flex gap-8 text-center">
                         <div>
-                          <div className="text-sm text-muted-foreground">Appointments</div>
+                          <div className="text-sm text-muted-foreground">Rendez-vous</div>
                           <div className="text-xl font-bold">{staff.appointmentsHandled}</div>
                         </div>
                         <div>
-                          <div className="text-sm text-muted-foreground">Treatments</div>
+                          <div className="text-sm text-muted-foreground">Traitements</div>
                           <div className="text-xl font-bold">{staff.treatmentsCompleted}</div>
                         </div>
                         <div>

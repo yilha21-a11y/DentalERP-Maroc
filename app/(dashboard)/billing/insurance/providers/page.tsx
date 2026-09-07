@@ -139,7 +139,7 @@ export default function InsuranceProvidersPage() {
     const ok = await confirm({
       title: 'Delete Provider',
       description: 'Are you sure you want to delete this provider?',
-      confirmLabel: 'Delete',
+      confirmLabel: 'Supprimer',
     })
     if (!ok) return
     try {
@@ -203,7 +203,7 @@ export default function InsuranceProvidersPage() {
                   <TableHead>Code</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Policies</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead className="w-[50px]" />
                 </TableRow>
               </TableHeader>

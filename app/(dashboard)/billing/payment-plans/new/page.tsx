@@ -496,7 +496,7 @@ export default function NewPaymentPlanPage() {
                       <TableRow>
                         <TableHead className="w-[60px]">#</TableHead>
                         <TableHead>Due Date</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Montant</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

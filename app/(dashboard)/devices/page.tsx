@@ -402,7 +402,7 @@ export default function DevicesPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead>Last Ping</TableHead>
                   <TableHead>Latest Data</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>

@@ -303,7 +303,7 @@ export default function LeavesPage() {
             <div className="flex gap-2 flex-1">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -343,7 +343,7 @@ export default function LeavesPage() {
                 <TableHead>Duration</TableHead>
                 <TableHead>Days</TableHead>
                 <TableHead>Reason</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

@@ -31,8 +31,8 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel = 'Confirmer',
+  cancelLabel = 'Annuler',
   variant = 'destructive',
   onConfirm,
   loading = false,
@@ -94,7 +94,7 @@ export function useConfirmDialog() {
     open: false,
     title: '',
     description: '',
-    confirmLabel: 'Confirm',
+    confirmLabel: 'Confirmer',
     variant: 'destructive',
     resolve: null,
   })
@@ -110,7 +110,7 @@ export function useConfirmDialog() {
         open: true,
         title: opts.title,
         description: opts.description,
-        confirmLabel: opts.confirmLabel || 'Confirm',
+        confirmLabel: opts.confirmLabel || 'Confirmer',
         variant: opts.variant || 'destructive',
         resolve,
       })

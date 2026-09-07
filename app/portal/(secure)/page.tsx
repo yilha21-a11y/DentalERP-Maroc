@@ -64,9 +64,9 @@ export default function PatientDashboard() {
   }, [])
 
   const formatCurrency = (val: number | string) =>
-    new Intl.NumberFormat('en-IN', {
+    new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       minimumFractionDigits: 0,
     }).format(Number(val))
 
@@ -96,7 +96,7 @@ export default function PatientDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold">Tableau de bord</h1>
         <Link href="/portal/book">
           <Button>
             <CalendarPlus className="h-4 w-4 mr-2" />
@@ -165,7 +165,7 @@ export default function PatientDashboard() {
         {/* Upcoming Appointments */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base">Upcoming Appointments</CardTitle>
+            <CardTitle className="text-base">Prochains rendez-vous</CardTitle>
             <Link
               href="/portal/appointments"
               className="text-xs text-primary hover:underline flex items-center gap-1"

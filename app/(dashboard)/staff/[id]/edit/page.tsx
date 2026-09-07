@@ -381,7 +381,7 @@ export default function EditStaffPage({ params }: { params: Promise<{ id: string
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="address">Adresse</Label>
                 <Textarea
                   id="address"
                   value={formData.address}
@@ -392,7 +392,7 @@ export default function EditStaffPage({ params }: { params: Promise<{ id: string
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
+                  <Label htmlFor="city">Ville</Label>
                   <Input
                     id="city"
                     value={formData.city}
@@ -408,7 +408,7 @@ export default function EditStaffPage({ params }: { params: Promise<{ id: string
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="pincode">Pincode</Label>
+                  <Label htmlFor="pincode">Code postal</Label>
                   <Input
                     id="pincode"
                     value={formData.pincode}
@@ -428,7 +428,7 @@ export default function EditStaffPage({ params }: { params: Promise<{ id: string
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Label htmlFor="dateOfBirth">Date de naissance</Label>
                   <Input
                     id="dateOfBirth"
                     type="date"
@@ -437,7 +437,7 @@ export default function EditStaffPage({ params }: { params: Promise<{ id: string
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="gender">Gender</Label>
+                  <Label htmlFor="gender">Sexe</Label>
                   <Select
                     value={formData.gender}
                     onValueChange={(value) => handleChange('gender', value)}

@@ -139,7 +139,7 @@ export default function PaymentPlansPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payment Plans</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Plans de paiement</h1>
           <p className="text-muted-foreground">Manage installment payment plans for invoices</p>
         </div>
         <Link href="/billing/payment-plans/new">
@@ -244,7 +244,7 @@ export default function PaymentPlansPage() {
                 <TableHead>Frequency</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead>Next Due</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>

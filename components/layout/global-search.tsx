@@ -33,10 +33,10 @@ interface SearchResults {
 
 const CATEGORIES = [
   { key: 'patients' as const, label: 'Patients', icon: Users },
-  { key: 'appointments' as const, label: 'Appointments', icon: Calendar },
-  { key: 'invoices' as const, label: 'Invoices', icon: Receipt },
-  { key: 'staff' as const, label: 'Staff', icon: UserCog },
-  { key: 'treatments' as const, label: 'Treatments', icon: Stethoscope },
+  { key: 'appointments' as const, label: 'Rendez-vous', icon: Calendar },
+  { key: 'invoices' as const, label: 'Factures', icon: Receipt },
+  { key: 'staff' as const, label: 'Personnel', icon: UserCog },
+  { key: 'treatments' as const, label: 'Traitements', icon: Stethoscope },
 ]
 
 export function GlobalSearch() {

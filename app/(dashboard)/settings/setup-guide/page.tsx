@@ -88,7 +88,7 @@ const setupSections: SetupSection[] = [
           'Go to Settings → Clinic Information',
           'Fill in the "Basic Information" section: Clinic Name and Tagline',
           'Fill in "Contact Information": Primary Phone, Email, and Website',
-          'Fill in "Address": Street Address, City, State, and Pincode',
+          'Fill in "Adresse": Street Address, City, State, and Pincode',
           'Fill in "Registration & Tax": GST Number and PAN (if applicable)',
           'Click "Save Changes"',
         ],
@@ -197,7 +197,7 @@ const setupSections: SetupSection[] = [
           'Fill in the Code (e.g., "RCT", "SCALING"), Name, and Category',
           'Set the Base Price — this is the default price shown on invoices',
           'Optionally add Duration (in minutes), Materials, and Pre/Post instructions',
-          'Click "Save" to add the procedure',
+          'Click "Enregistrer" to add the procedure',
           'Repeat for all your dental procedures',
         ],
         tips: [

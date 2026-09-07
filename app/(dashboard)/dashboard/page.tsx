@@ -104,9 +104,9 @@ export default function DashboardPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('fr-MA', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'MAD',
       maximumFractionDigits: 0,
     }).format(amount)
   }
@@ -127,8 +127,8 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Loading your practice data...</p>
+          <h1 className="text-3xl font-bold tracking-tight">Tableau de bord</h1>
+          <p className="text-muted-foreground">Chargement des données du cabinet...</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
@@ -151,14 +151,14 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground text-red-600">Failed to load dashboard data</p>
+          <h1 className="text-3xl font-bold tracking-tight">Tableau de bord</h1>
+          <p className="text-muted-foreground text-red-600">Impossible de charger les données du tableau de bord</p>
         </div>
         <Card className="border-red-200">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-red-600">
               <AlertCircle className="h-5 w-5" />
-              <p>{error || 'An error occurred'}</p>
+              <p>{error || 'Une erreur est survenue'}</p>
             </div>
             <Button onClick={fetchDashboardStats} className="mt-4">
               Retry
@@ -173,7 +173,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Welcome message */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Tableau de bord</h1>
         <p className="text-muted-foreground">
           Here&apos;s what&apos;s happening at your dental practice today.
         </p>
@@ -187,7 +187,7 @@ export default function DashboardPage() {
         {/* Total Patients */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
+            <CardTitle className="text-sm font-medium">Total patients</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -223,7 +223,7 @@ export default function DashboardPage() {
         {/* This Month Revenue */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Month Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Chiffre d’affaires du mois</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -244,14 +244,14 @@ export default function DashboardPage() {
         {/* Pending Payments */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
+            <CardTitle className="text-sm font-medium">Paiements en attente</CardTitle>
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {formatCurrency(stats.overview.pendingPayments)}
             </div>
-            <p className="text-xs text-muted-foreground">Outstanding receivables</p>
+            <p className="text-xs text-muted-foreground">Créances à recevoir</p>
           </CardContent>
         </Card>
       </div>
@@ -261,8 +261,8 @@ export default function DashboardPage() {
         {/* Revenue Chart */}
         <Card className="lg:col-span-4">
           <CardHeader>
-            <CardTitle>Revenue Overview</CardTitle>
-            <CardDescription>Last 7 days revenue trend</CardDescription>
+            <CardTitle>Aperçu du chiffre d’affaires</CardTitle>
+            <CardDescription>Évolution du chiffre d’affaires sur 7 jours</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             {stats.charts.last7DaysRevenue && stats.charts.last7DaysRevenue.length > 0 ? (
@@ -293,7 +293,7 @@ export default function DashboardPage() {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-muted-foreground text-center py-8">No revenue data available</p>
+              <p className="text-muted-foreground text-center py-8">Aucune donnée de chiffre d’affaires disponible</p>
             )}
           </CardContent>
         </Card>
@@ -301,8 +301,8 @@ export default function DashboardPage() {
         {/* Upcoming Appointments */}
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Upcoming Appointments</CardTitle>
-            <CardDescription>Next 5 scheduled appointments</CardDescription>
+            <CardTitle>Prochains rendez-vous</CardTitle>
+            <CardDescription>5 prochains rendez-vous planifiés</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -320,7 +320,7 @@ export default function DashboardPage() {
                   </div>
                 ))
               ) : (
-                <p className="text-muted-foreground text-center py-8">No upcoming appointments</p>
+                <p className="text-muted-foreground text-center py-8">Aucun rendez-vous à venir</p>
               )}
             </div>
             <Link href="/appointments">
@@ -336,8 +336,8 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Appointments by Status</CardTitle>
-            <CardDescription>This month's appointment distribution</CardDescription>
+            <CardTitle>Rendez-vous par statut</CardTitle>
+            <CardDescription>Répartition des rendez-vous ce mois-ci</CardDescription>
           </CardHeader>
           <CardContent>
             {stats.charts.appointmentsByStatus && stats.charts.appointmentsByStatus.length > 0 ? (
@@ -380,8 +380,8 @@ export default function DashboardPage() {
         {/* Monthly Revenue Trend */}
         <Card>
           <CardHeader>
-            <CardTitle>Monthly Revenue Trend</CardTitle>
-            <CardDescription>Last 6 months revenue comparison</CardDescription>
+            <CardTitle>Évolution mensuelle du chiffre d’affaires</CardTitle>
+            <CardDescription>Comparaison du chiffre d’affaires sur 6 mois</CardDescription>
           </CardHeader>
           <CardContent>
             {stats.charts.last6MonthsRevenue && stats.charts.last6MonthsRevenue.length > 0 ? (
@@ -404,7 +404,7 @@ export default function DashboardPage() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-muted-foreground text-center py-8">No revenue data available</p>
+              <p className="text-muted-foreground text-center py-8">Aucune donnée de chiffre d’affaires disponible</p>
             )}
           </CardContent>
         </Card>
@@ -415,8 +415,8 @@ export default function DashboardPage() {
         {/* Top Procedures */}
         <Card className="lg:col-span-4">
           <CardHeader>
-            <CardTitle>Top Procedures</CardTitle>
-            <CardDescription>Most common procedures this month</CardDescription>
+            <CardTitle>Actes les plus fréquents</CardTitle>
+            <CardDescription>Actes les plus réalisés ce mois-ci</CardDescription>
           </CardHeader>
           <CardContent>
             {stats.charts.topProcedures && stats.charts.topProcedures.length > 0 ? (
@@ -508,7 +508,7 @@ export default function DashboardPage() {
               <Users className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="font-medium">Add Patient</p>
+              <p className="font-medium">Ajouter un patient</p>
               <p className="text-sm text-muted-foreground">Register new</p>
             </div>
           </Link>
