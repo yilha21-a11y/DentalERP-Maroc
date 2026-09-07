@@ -55,40 +55,24 @@ export interface NavSection {
 
 export const navigation: NavSection[] = [
   {
-    title: 'Overview',
+    title: 'Vue générale',
     items: [
-      {
-        title: 'AI Chat',
-        href: '/chat',
-        icon: BotMessageSquare,
-      },
-      {
-        title: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutDashboard,
-      },
+      { title: 'Assistant IA', href: '/chat', icon: BotMessageSquare },
+      { title: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
     ],
   },
   {
-    title: 'Patient Care',
+    title: 'Soins patients',
     items: [
+      { title: 'Patients', href: '/patients', icon: Users },
       {
-        title: 'Patients',
-        href: '/patients',
-        icon: Users,
-      },
-      {
-        title: 'Appointments',
+        title: 'Rendez-vous',
         href: '/appointments',
         icon: Calendar,
         subItems: [
+          { title: 'Tous les rendez-vous', href: '/appointments', icon: Calendar },
           {
-            title: 'All Appointments',
-            href: '/appointments',
-            icon: Calendar,
-          },
-          {
-            title: 'Waitlist',
+            title: 'Liste d’attente',
             href: '/appointments/waitlist',
             icon: Clock,
             roles: ['ADMIN', 'RECEPTIONIST'],
@@ -96,25 +80,25 @@ export const navigation: NavSection[] = [
         ],
       },
       {
-        title: 'Video Consults',
+        title: 'Téléconsultations',
         href: '/video',
         icon: Video,
         roles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST'],
       },
       {
-        title: 'Treatments',
+        title: 'Traitements',
         href: '/treatments',
         icon: Stethoscope,
         roles: ['ADMIN', 'DOCTOR'],
       },
       {
-        title: 'Prescriptions',
+        title: 'Ordonnances',
         href: '/prescriptions',
         icon: ClipboardList,
         roles: ['ADMIN', 'DOCTOR'],
       },
       {
-        title: 'Drug Catalog',
+        title: 'Médicaments',
         href: '/medications',
         icon: Pill,
         roles: ['ADMIN', 'DOCTOR'],
@@ -122,55 +106,43 @@ export const navigation: NavSection[] = [
     ],
   },
   {
-    title: 'Finance',
+    title: 'Finances',
     items: [
       {
-        title: 'Billing',
+        title: 'Facturation',
         href: '/billing',
         icon: Receipt,
         roles: ['ADMIN', 'ACCOUNTANT', 'RECEPTIONIST'],
         subItems: [
+          { title: 'Vue générale', href: '/billing', icon: Receipt },
+          { title: 'Factures', href: '/billing/invoices', icon: FileText },
+          { title: 'Paiements', href: '/billing/payments', icon: CreditCard },
           {
-            title: 'Overview',
-            href: '/billing',
-            icon: Receipt,
-          },
-          {
-            title: 'Invoices',
-            href: '/billing/invoices',
-            icon: FileText,
-          },
-          {
-            title: 'Payments',
-            href: '/billing/payments',
-            icon: CreditCard,
-          },
-          {
-            title: 'Payment Plans',
+            title: 'Plans de paiement',
             href: '/billing/payment-plans',
             icon: CalendarClock,
             roles: ['ADMIN', 'ACCOUNTANT', 'RECEPTIONIST'],
           },
           {
-            title: 'Insurance Claims',
+            title: 'Dossiers assurance',
             href: '/billing/insurance',
             icon: Shield,
             roles: ['ADMIN', 'ACCOUNTANT'],
           },
           {
-            title: 'Pre-Authorizations',
+            title: 'Préautorisations',
             href: '/billing/insurance/pre-auth',
             icon: FileCheck,
             roles: ['ADMIN', 'ACCOUNTANT'],
           },
           {
-            title: 'Insurance Providers',
+            title: 'Assureurs',
             href: '/billing/insurance/providers',
             icon: Building2,
             roles: ['ADMIN'],
           },
           {
-            title: 'Financial Reports',
+            title: 'Rapports financiers',
             href: '/billing/reports',
             icon: TrendingUp,
             roles: ['ADMIN', 'ACCOUNTANT'],
@@ -180,7 +152,7 @@ export const navigation: NavSection[] = [
     ],
   },
   {
-    title: 'Engagement',
+    title: 'Relation patient',
     items: [
       {
         title: 'CRM',
@@ -188,26 +160,10 @@ export const navigation: NavSection[] = [
         icon: Heart,
         roles: ['ADMIN', 'RECEPTIONIST'],
         subItems: [
-          {
-            title: 'Dashboard',
-            href: '/crm',
-            icon: Heart,
-          },
-          {
-            title: 'Memberships',
-            href: '/crm/memberships',
-            icon: Crown,
-          },
-          {
-            title: 'Loyalty',
-            href: '/crm/loyalty',
-            icon: Gift,
-          },
-          {
-            title: 'Referrals',
-            href: '/crm/referrals',
-            icon: Share2,
-          },
+          { title: 'Tableau de bord', href: '/crm', icon: Heart },
+          { title: 'Abonnements', href: '/crm/memberships', icon: Crown },
+          { title: 'Fidélité', href: '/crm/loyalty', icon: Gift },
+          { title: 'Parrainages', href: '/crm/referrals', icon: Share2 },
           {
             title: 'Segments',
             href: '/crm/segments',
@@ -219,51 +175,29 @@ export const navigation: NavSection[] = [
     ],
   },
   {
-    title: 'Operations',
+    title: 'Opérations',
     items: [
+      { title: 'Stock', href: '/inventory', icon: Package, roles: ['ADMIN'] },
       {
-        title: 'Inventory',
-        href: '/inventory',
-        icon: Package,
-        roles: ['ADMIN'],
-      },
-      {
-        title: 'Sterilization',
+        title: 'Stérilisation',
         href: '/sterilization',
         icon: Shield,
         roles: ['ADMIN', 'DOCTOR'],
         subItems: [
+          { title: 'Tableau de bord', href: '/sterilization', icon: Shield },
+          { title: 'Instruments', href: '/sterilization/instruments', icon: Package },
+          { title: 'Cycles', href: '/sterilization/logs', icon: ClipboardList },
           {
-            title: 'Dashboard',
-            href: '/sterilization',
-            icon: Shield,
-          },
-          {
-            title: 'Instruments',
-            href: '/sterilization/instruments',
-            icon: Package,
-          },
-          {
-            title: 'Cycle Logs',
-            href: '/sterilization/logs',
-            icon: ClipboardList,
-          },
-          {
-            title: 'Compliance',
+            title: 'Conformité',
             href: '/sterilization/reports',
             icon: BarChart3,
             roles: ['ADMIN'],
           },
         ],
       },
+      { title: 'Appareils', href: '/devices', icon: Cpu, roles: ['ADMIN'] },
       {
-        title: 'Devices',
-        href: '/devices',
-        icon: Cpu,
-        roles: ['ADMIN'],
-      },
-      {
-        title: 'Lab Orders',
+        title: 'Laboratoire',
         href: '/lab',
         icon: FlaskConical,
         roles: ['ADMIN', 'DOCTOR', 'LAB_TECH'],
@@ -274,25 +208,21 @@ export const navigation: NavSection[] = [
         icon: MessageSquare,
         roles: ['ADMIN', 'RECEPTIONIST'],
         subItems: [
+          { title: 'Envoyer des messages', href: '/communications', icon: MessageSquare },
           {
-            title: 'Send Messages',
-            href: '/communications',
-            icon: MessageSquare,
-          },
-          {
-            title: 'Analytics',
+            title: 'Statistiques',
             href: '/communications/analytics',
             icon: BarChart3,
             roles: ['ADMIN'],
           },
           {
-            title: 'Automations',
+            title: 'Automatisations',
             href: '/communications/automations',
             icon: Zap,
             roles: ['ADMIN'],
           },
           {
-            title: 'Feedback',
+            title: 'Avis patients',
             href: '/communications/feedback',
             icon: Star,
             roles: ['ADMIN'],
@@ -305,46 +235,26 @@ export const navigation: NavSection[] = [
     title: 'Administration',
     items: [
       {
-        title: 'Staff',
+        title: 'Personnel',
         href: '/staff',
         icon: UserCog,
         roles: ['ADMIN'],
         subItems: [
-          {
-            title: 'All Staff',
-            href: '/staff',
-            icon: UserCog,
-          },
-          {
-            title: 'Invites',
-            href: '/staff/invites',
-            icon: UserCog,
-          },
-          {
-            title: 'Attendance',
-            href: '/staff/attendance',
-            icon: Calendar,
-          },
-          {
-            title: 'Leaves',
-            href: '/staff/leaves',
-            icon: Calendar,
-          },
+          { title: 'Tout le personnel', href: '/staff', icon: UserCog },
+          { title: 'Invitations', href: '/staff/invites', icon: UserCog },
+          { title: 'Présences', href: '/staff/attendance', icon: Calendar },
+          { title: 'Congés', href: '/staff/leaves', icon: Calendar },
         ],
       },
       {
-        title: 'Reports',
+        title: 'Rapports',
         href: '/reports',
         icon: BarChart3,
         roles: ['ADMIN', 'ACCOUNTANT', 'DOCTOR'],
         subItems: [
+          { title: 'Vue générale', href: '/reports', icon: BarChart3 },
           {
-            title: 'Overview',
-            href: '/reports',
-            icon: BarChart3,
-          },
-          {
-            title: 'Audit Log',
+            title: 'Journal d’audit',
             href: '/reports/audit-log',
             icon: Activity,
             roles: ['ADMIN'],
@@ -352,46 +262,18 @@ export const navigation: NavSection[] = [
         ],
       },
       {
-        title: 'Settings',
+        title: 'Paramètres',
         href: '/settings',
         icon: Settings,
         roles: ['ADMIN'],
         subItems: [
-          {
-            title: 'General',
-            href: '/settings',
-            icon: Settings,
-          },
-          {
-            title: 'Setup Guide',
-            href: '/settings/setup-guide',
-            icon: BookOpen,
-          },
-          {
-            title: 'AI Features',
-            href: '/settings/ai',
-            icon: Sparkles,
-          },
-          {
-            title: 'Forms',
-            href: '/settings/forms',
-            icon: ClipboardCheck,
-          },
-          {
-            title: 'Integrations',
-            href: '/settings/integrations',
-            icon: Link2,
-          },
-          {
-            title: 'Pricing Advisor',
-            href: '/settings/pricing',
-            icon: DollarSign,
-          },
-          {
-            title: 'Data Import',
-            href: '/settings/import',
-            icon: Upload,
-          },
+          { title: 'Général', href: '/settings', icon: Settings },
+          { title: 'Guide de configuration', href: '/settings/setup-guide', icon: BookOpen },
+          { title: 'Fonctions IA', href: '/settings/ai', icon: Sparkles },
+          { title: 'Formulaires', href: '/settings/forms', icon: ClipboardCheck },
+          { title: 'Intégrations', href: '/settings/integrations', icon: Link2 },
+          { title: 'Conseiller de tarification', href: '/settings/pricing', icon: DollarSign },
+          { title: 'Importation de données', href: '/settings/import', icon: Upload },
         ],
       },
     ],
