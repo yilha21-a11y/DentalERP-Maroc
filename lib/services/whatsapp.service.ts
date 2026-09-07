@@ -18,10 +18,11 @@ export async function sendWhatsAppTemplate(input: {
 }) {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
   const token = process.env.WHATSAPP_ACCESS_TOKEN
+  const graphVersion = process.env.WHATSAPP_GRAPH_VERSION || 'v23.0'
   if (!phoneNumberId || !token) throw new Error('Configuration WhatsApp manquante')
 
   const phone = normalizeMoroccoPhone(input.phone)
-  const response = await fetch(`https://graph.facebook.com/v23.0/${phoneNumberId}/messages`, {
+  const response = await fetch(`https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
