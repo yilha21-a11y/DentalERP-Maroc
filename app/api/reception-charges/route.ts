@@ -22,19 +22,56 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { error, hospitalId } = await requireAuthAndRole(['ADMIN','DOCTOR'])
-  if (error || !hospitalId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const { error, hospitalId, user } = await requireAuthAndRole(['ADMIN','DOCTOR'])
+  if (error || !hospitalId || !user?.id) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
   const body = await req.json()
-  const { patientId, treatmentId, doctorId, amount, notes } = body
-  const numericAmount = Number(amount)
-  if (!patientId || !doctorId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+  const patientId = String(body.patientId || '')
+  const treatmentId = body.treatmentId ? String(body.treatmentId) : null
+  let doctorId = String(body.doctorId || '')
+  const numericAmount = Number(body.amount)
+  const notes = body.notes ? String(body.notes) : null
+
+  if (!patientId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
     return NextResponse.json({ error: 'Données incomplètes ou montant invalide' }, { status: 400 })
+  }
+
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, hospitalId },
+    select: { id: true },
+  })
+  if (!patient) return NextResponse.json({ error: 'Patient introuvable dans ce cabinet' }, { status: 404 })
+
+  if (user.role === 'DOCTOR') {
+    const ownStaff = await prisma.staff.findFirst({
+      where: { hospitalId, userId: user.id, isActive: true },
+      select: { id: true },
+    })
+    if (!ownStaff) return NextResponse.json({ error: 'Profil dentiste introuvable' }, { status: 403 })
+    doctorId = ownStaff.id
+  } else {
+    if (!doctorId) return NextResponse.json({ error: 'Dentiste requis' }, { status: 400 })
+    const doctor = await prisma.staff.findFirst({
+      where: { id: doctorId, hospitalId, isActive: true },
+      select: { id: true },
+    })
+    if (!doctor) return NextResponse.json({ error: 'Dentiste introuvable dans ce cabinet' }, { status: 404 })
+  }
+
+  if (treatmentId) {
+    const treatment = await prisma.treatment.findFirst({
+      where: { id: treatmentId, hospitalId, patientId, doctorId },
+      select: { id: true },
+    })
+    if (!treatment) {
+      return NextResponse.json({ error: 'Traitement incompatible avec ce patient ou ce dentiste' }, { status: 400 })
+    }
   }
 
   await prisma.$executeRawUnsafe(
     `INSERT INTO ReceptionCharge (id,hospitalId,patientId,treatmentId,doctorId,amount,discount,amountPaid,status,notes,sentAt,createdAt,updatedAt)
      VALUES (?,?,?,?,?,?,0,0,'PENDING',?,NOW(3),NOW(3),NOW(3))`,
-    randomUUID(), hospitalId, patientId, treatmentId || null, doctorId, numericAmount, notes || null
+    randomUUID(), hospitalId, patientId, treatmentId, doctorId, numericAmount, notes
   )
   return NextResponse.json({ success: true })
 }
