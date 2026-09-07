@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 type QueueItem = {
@@ -11,7 +11,7 @@ type QueueItem = {
   lastInitial: string
 }
 
-export default function WaitingRoomDisplayPage() {
+function WaitingRoomDisplayContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token') || ''
   const [items, setItems] = useState<QueueItem[]>([])
@@ -75,5 +75,13 @@ export default function WaitingRoomDisplayPage() {
 
       <footer className="mt-10 text-center text-lg text-slate-500">Votre santé dentaire, notre priorité.</footer>
     </main>
+  )
+}
+
+export default function WaitingRoomDisplayPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-slate-50 p-8"><p className="text-2xl text-slate-500">Chargement de la salle d’attente…</p></main>}>
+      <WaitingRoomDisplayContent />
+    </Suspense>
   )
 }
