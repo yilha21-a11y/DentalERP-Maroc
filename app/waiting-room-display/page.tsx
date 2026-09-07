@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 type QueueItem = {
   id: string
@@ -11,12 +12,15 @@ type QueueItem = {
 }
 
 export default function WaitingRoomDisplayPage() {
+  const searchParams = useSearchParams()
+  const token = searchParams.get('token') || ''
   const [items, setItems] = useState<QueueItem[]>([])
   const [now, setNow] = useState(new Date())
 
   useEffect(() => {
     const load = async () => {
-      const res = await fetch('/api/waiting-room', { cache: 'no-store' })
+      const endpoint = token ? `/api/waiting-room?token=${encodeURIComponent(token)}` : '/api/waiting-room'
+      const res = await fetch(endpoint, { cache: 'no-store' })
       if (res.ok) {
         const json = await res.json()
         setItems(json.data || [])
@@ -26,7 +30,7 @@ export default function WaitingRoomDisplayPage() {
     const q = setInterval(load, 5000)
     const c = setInterval(() => setNow(new Date()), 1000)
     return () => { clearInterval(q); clearInterval(c) }
-  }, [])
+  }, [token])
 
   const current = items.find((x) => x.status === 'CALLED' || x.status === 'IN_CONSULTATION')
   const waiting = items.filter((x) => x.status === 'WAITING').slice(0, 8)
