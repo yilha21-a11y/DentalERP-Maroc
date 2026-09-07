@@ -33,10 +33,10 @@ model Hospital {
 
   // Localization. Defaults keep existing clinics on Indian formatting.
   // `country` will select the tax provider — see docs/LOCALIZATION.md.
-  locale              String    @default("en-IN")
-  country             String    @default("IN")
-  currency            String    @default("INR")
-  timezone            String    @default("Asia/Kolkata")
+  locale              String    @default("fr-MA")
+  country             String    @default("MA")
+  currency            String    @default("MAD")
+  timezone            String    @default("Africa/Casablanca")
 
   plan                Plan      @default(FREE)
   planExpiresAt       DateTime?
@@ -161,7 +161,7 @@ model SubscriptionPayment {
   id                String                    @id @default(cuid())
   subscriptionId    String
   amount            Decimal                   @db.Decimal(10, 2)
-  currency          String                    @default("INR")
+  currency          String                    @default("MAD")
   status            SubscriptionPaymentStatus @default(PENDING)
   paymentMethod     String?
   externalPaymentId String?
@@ -271,6 +271,7 @@ model VerificationToken {
 enum Role {
   ADMIN
   DOCTOR
+  ASSISTANT
   RECEPTIONIST
   LAB_TECH
   ACCOUNTANT
@@ -452,7 +453,7 @@ model Patient {
   email           String?
   address         String?    @db.Text
   city            String?
-  state           String?    @default("Tamil Nadu")
+  state           String?
   pincode         String?
   aadharNumber    String?
   occupation      String?
