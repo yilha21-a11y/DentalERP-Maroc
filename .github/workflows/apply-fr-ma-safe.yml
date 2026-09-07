@@ -20,10 +20,12 @@ jobs:
           fetch-depth: 0
       - name: Apply syntax-safe UI localization
         run: node scripts/localize-fr-ma.mjs
+      - name: Apply Morocco schema and seed customization
+        run: node scripts/apply-morocco-data.mjs
       - name: Commit changes to develop
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app components
-          git diff --cached --quiet || git commit -m 'Apply safe French Morocco UI localization'
+          git add app components prisma
+          git diff --cached --quiet || git commit -m 'Apply Morocco localization and data defaults'
           git push origin develop
