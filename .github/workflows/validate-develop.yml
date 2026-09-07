@@ -1,0 +1,37 @@
+name: Validate DentalERP Maroc develop
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-develop.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Prisma generate
+        run: npx prisma generate
+        env:
+          DATABASE_URL: mysql://user:password@localhost:3306/dentalerp
+      - name: Prisma validate
+        run: npx prisma validate
+        env:
+          DATABASE_URL: mysql://user:password@localhost:3306/dentalerp
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+        env:
+          DATABASE_URL: mysql://user:password@localhost:3306/dentalerp
+          NEXTAUTH_SECRET: validation-secret-validation-secret
+          NEXTAUTH_URL: http://localhost:3000
