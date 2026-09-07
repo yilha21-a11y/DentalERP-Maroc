@@ -18,14 +18,10 @@ export async function GET(req: NextRequest) {
 
   const staffFilter = user.role === 'DOCTOR' ? ' AND s.userId = ?' : ''
   const params: unknown[] = [
-    start, end,
-    start, end,
-    start, end,
-    start, end,
-    start, end,
-    start, end,
-    start, end,
-    start, end,
+    start, end,      // appointments
+    start, end,      // new patients inside treatment aggregate
+    start, end,      // treatments
+    start, end,      // reception charges
     hospitalId,
   ]
   if (user.role === 'DOCTOR') params.push(user.id)
