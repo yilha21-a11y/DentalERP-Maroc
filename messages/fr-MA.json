@@ -1,0 +1,43 @@
+{
+  "common": {
+    "actions": {
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "edit": "Modifier",
+      "create": "Créer",
+      "search": "Rechercher",
+      "export": "Exporter",
+      "back": "Retour"
+    },
+    "states": {
+      "loading": "Chargement…",
+      "empty": "Aucune donnée à afficher",
+      "error": "Une erreur est survenue. Veuillez réessayer."
+    }
+  },
+  "auth": {
+    "login": {
+      "heading": "Bon retour",
+      "subheading": "Connectez-vous à votre compte DentalERP",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "noAccount": "Vous n’avez pas de compte ?",
+      "signUp": "Créer un compte"
+    }
+  },
+  "billing": {
+    "invoice": {
+      "title": "Facture",
+      "subtotal": "Sous-total",
+      "discount": "Remise",
+      "taxableAmount": "Montant taxable",
+      "total": "Total",
+      "amountInWords": "Montant en lettres",
+      "cgst": "Taxe",
+      "sgst": "Taxe",
+      "igst": "Taxe"
+    }
+  }
+}
