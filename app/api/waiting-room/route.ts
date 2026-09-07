@@ -3,9 +3,26 @@ import { randomUUID } from 'crypto'
 import prisma from '@/lib/prisma'
 import { requireAuthAndRole } from '@/lib/api-helpers'
 
-export async function GET() {
-  const { error, hospitalId } = await requireAuthAndRole()
-  if (error || !hospitalId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url)
+  const displayToken = url.searchParams.get('token')
+  const isDisplay = Boolean(
+    displayToken &&
+    process.env.WAITING_ROOM_DISPLAY_TOKEN &&
+    displayToken === process.env.WAITING_ROOM_DISPLAY_TOKEN &&
+    process.env.WAITING_ROOM_HOSPITAL_ID
+  )
+
+  let hospitalId: string | null = null
+  if (isDisplay) {
+    hospitalId = process.env.WAITING_ROOM_HOSPITAL_ID || null
+  } else {
+    const authResult = await requireAuthAndRole()
+    if (authResult.error || !authResult.hospitalId) {
+      return authResult.error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    hospitalId = authResult.hospitalId
+  }
 
   const rows = await prisma.$queryRawUnsafe<any[]>(`
     SELECT w.id, w.status, w.roomLabel, w.arrivedAt, w.calledAt,
