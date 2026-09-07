@@ -4,7 +4,8 @@ import prisma from '@/lib/prisma'
 import { requireAuthAndRole } from '@/lib/api-helpers'
 
 export async function GET(req: NextRequest) {
-  const { error, hospitalId, userId } = await requireAuthAndRole()
+  const { error, hospitalId, user } = await requireAuthAndRole()
+  const userId = user?.id
   if (error || !hospitalId || !userId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   const conversationId = new URL(req.url).searchParams.get('conversationId')
   if (!conversationId) return NextResponse.json({ error: 'conversationId requis' }, { status: 400 })
@@ -24,7 +25,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { error, hospitalId, userId } = await requireAuthAndRole()
+  const { error, hospitalId, user } = await requireAuthAndRole()
+  const userId = user?.id
   if (error || !hospitalId || !userId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   const body = await req.json()
 
