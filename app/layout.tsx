@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { Providers } from '@/components/providers'
+import { FrenchUiFallback } from '@/components/i18n/french-ui-fallback'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr-MA" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
+          <FrenchUiFallback />
           {children}
           <Toaster />
         </Providers>
