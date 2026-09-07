@@ -25,25 +25,13 @@ import { useToast } from '@/hooks/use-toast'
 import { getLocaleLabel, resolveLocaleCascade } from '@/lib/i18n/config'
 import { formatCurrency, formatDate } from '@/lib/i18n/format'
 
-/**
- * `<SelectItem value="">` is not allowed, so "inherit" stands in for the empty
- * choice in the widget and is sent to the API as `null`.
- */
 const INHERIT = 'inherit'
 
 interface LanguagePreferenceCardProps {
-  /** The person's stored override. `null` means inherit from the clinic. */
   locale: string | null
-  /** The clinic's locale, shown so "use clinic default" is not a mystery. */
   hospitalLocale: string | null
-  /**
-   * The clinic's ISO 4217 currency. A personal language choice changes how
-   * amounts are *grouped and punctuated*, never which currency the clinic
-   * bills in, and the preview has to show that honestly.
-   */
   currency: string
   supportedLocales: readonly string[]
-  /** Endpoint accepting `PATCH { locale: string | null }`. */
   endpoint: string
   description?: string
 }
@@ -54,7 +42,7 @@ export function LanguagePreferenceCard({
   currency,
   supportedLocales,
   endpoint,
-  description = 'Choose how dates, numbers and amounts are formatted for you. Everyone else at this clinic is unaffected.',
+  description = 'Choisissez le format des dates, des nombres et des montants.',
 }: LanguagePreferenceCardProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -76,24 +64,22 @@ export function LanguagePreferenceCard({
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}))
-        throw new Error(body.error || 'Failed to save language')
+        throw new Error(body.error || 'Impossible d’enregistrer la langue')
       }
 
       toast({
-        title: 'Language updated',
+        title: 'Langue mise à jour',
         description:
           selected === INHERIT
-            ? 'You are now following the clinic default.'
-            : `Formatting now uses ${getLocaleLabel(selected)}.`,
+            ? 'Vous utilisez maintenant la langue par défaut du cabinet.'
+            : `Le format utilise maintenant ${getLocaleLabel(selected)}.`,
       })
 
-      // The locale is resolved server-side on every request, so the rest of
-      // the app only picks up the change once the server components re-render.
       router.refresh()
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to save language',
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Impossible d’enregistrer la langue',
         variant: 'destructive',
       })
     } finally {
@@ -106,21 +92,21 @@ export function LanguagePreferenceCard({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Languages className="h-5 w-5" />
-          Language & Formatting
+          Langue et format
         </CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="locale">Language</Label>
+          <Label htmlFor="locale">Langue</Label>
           <Select value={selected} onValueChange={setSelected}>
             <SelectTrigger id="locale" className="max-w-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={INHERIT}>
-                Use clinic default
+                Utiliser la langue du cabinet
                 {hospitalLocale ? ` (${getLocaleLabel(hospitalLocale)})` : ''}
               </SelectItem>
               {supportedLocales.map((value) => (
@@ -131,16 +117,15 @@ export function LanguagePreferenceCard({
             </SelectContent>
           </Select>
           <p className="text-sm text-muted-foreground">
-            Leaving this on the clinic default means it follows the clinic if the clinic&apos;s
-            language is ever changed.
+            Pour cette version, le français du Maroc est la langue principale du système.
           </p>
         </div>
 
         <div className="rounded-md border p-4">
-          <p className="text-sm font-medium">Preview</p>
+          <p className="text-sm font-medium">Aperçu</p>
           <dl className="mt-2 grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
             <div className="flex gap-2">
-              <dt>Amount</dt>
+              <dt>Montant</dt>
               <dd className="font-medium text-foreground">
                 {formatCurrency(125000.5, { locale: effective, currency })}
               </dd>
@@ -158,7 +143,7 @@ export function LanguagePreferenceCard({
       <CardFooter>
         <Button onClick={handleSave} disabled={saving || !dirty}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save
+          Enregistrer
         </Button>
       </CardFooter>
     </Card>
