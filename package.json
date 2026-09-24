@@ -51,7 +51,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm run test && npm run test:e2e",
-    "prepare": "husky"
+    "prepare": "husky",
+    "audit:fr-maroc": "node scripts/audit-fr-maroc.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",
