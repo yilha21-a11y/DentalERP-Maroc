@@ -15,16 +15,16 @@ import { useToast } from '@/hooks/use-toast'
 
 const signupSchema = z
   .object({
-    hospitalName: z.string().min(2, 'Hospital name must be at least 2 characters'),
-    adminName: z.string().min(2, 'Your name must be at least 2 characters'),
-    email: z.string().email('Please enter a valid email address'),
-    phone: z.string().min(10, 'Phone number must be at least 10 digits'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    confirmPassword: z.string(),
+    hospitalName: z.string().min(2, 'Le nom du cabinet doit contenir au moins 2 caractères'),
+    adminName: z.string().min(2, 'Votre nom doit contenir au moins 2 caractères'),
+    email: z.string().email('Veuillez saisir une adresse e-mail valide'),
+    phone: z.string().min(10, 'Veuillez saisir un numéro de téléphone valide'),
+    password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
+    confirmMot de passe: z.string(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
+  .refine((data) => data.password === data.confirmMot de passe, {
+    message: 'Les mots de passe ne correspondent pas',
+    path: ['confirmMot de passe'],
   })
 
 type SignupFormData = z.infer<typeof signupSchema>
@@ -63,15 +63,15 @@ export default function SignupPage() {
       if (!response.ok) {
         toast({
           variant: 'destructive',
-          title: 'Signup failed',
-          description: result.error || 'Something went wrong. Please try again.',
+          title: 'Échec de l’inscription',
+          description: result.error || 'Une erreur est survenue. Veuillez réessayer.',
         })
         return
       }
 
       toast({
-        title: 'Account created!',
-        description: 'Please check your email to verify your account.',
+        title: 'Compte créé',
+        description: 'Consultez votre e-mail pour vérifier votre compte.',
       })
 
       // Redirect to verification pending page
@@ -80,7 +80,7 @@ export default function SignupPage() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Something went wrong. Please try again.',
+        description: 'Une erreur est survenue. Veuillez réessayer.',
       })
     } finally {
       setIsLoading(false)
@@ -95,16 +95,16 @@ export default function SignupPage() {
             <Building2 className="h-6 w-6" />
           </div>
         </div>
-        <CardTitle className="text-2xl font-bold">Create your clinic</CardTitle>
-        <CardDescription>Start your free trial with up to 100 patients</CardDescription>
+        <CardTitle className="text-2xl font-bold">Créer votre cabinet</CardTitle>
+        <CardDescription>Créez votre espace DentalERP Maroc</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="hospitalName">Hospital/Clinic Name</Label>
+            <Label htmlFor="hospitalName">Nom du cabinet</Label>
             <Input
               id="hospitalName"
-              placeholder="Dr. Smith's Dental Clinic"
+              placeholder="Cabinet Dentaire Al Amal"
               {...register('hospitalName')}
               disabled={isLoading}
             />
@@ -114,10 +114,10 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="adminName">Your Name</Label>
+            <Label htmlFor="adminName">Votre nom</Label>
             <Input
               id="adminName"
-              placeholder="Dr. John Smith"
+              placeholder="Dr Sara Amrani"
               {...register('adminName')}
               disabled={isLoading}
             />
@@ -127,11 +127,11 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">E-mail</Label>
             <Input
               id="email"
               type="email"
-              placeholder="doctor@clinic.com"
+              placeholder="dentiste@cabinet.ma"
               {...register('email')}
               disabled={isLoading}
             />
@@ -139,11 +139,11 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="phone">Téléphone</Label>
             <Input
               id="phone"
               type="tel"
-              placeholder="9876543210"
+              placeholder="+212 6 00 00 00 00"
               {...register('phone')}
               disabled={isLoading}
             />
@@ -151,11 +151,11 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Mot de passe</Label>
             <Input
               id="password"
               type="password"
-              placeholder="At least 8 characters"
+              placeholder="Au moins 8 caractères"
               {...register('password')}
               disabled={isLoading}
             />
@@ -165,22 +165,22 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Label htmlFor="confirmMot de passe">Confirm Mot de passe</Label>
             <Input
-              id="confirmPassword"
+              id="confirmMot de passe"
               type="password"
-              placeholder="Confirm your password"
-              {...register('confirmPassword')}
+              placeholder="Confirmez votre mot de passe"
+              {...register('confirmMot de passe')}
               disabled={isLoading}
             />
-            {errors.confirmPassword && (
-              <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+            {errors.confirmMot de passe && (
+              <p className="text-sm text-destructive">{errors.confirmMot de passe.message}</p>
             )}
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Account
+            Créer le compte
           </Button>
         </form>
 
@@ -190,12 +190,12 @@ export default function SignupPage() {
             className="text-primary hover:underline inline-flex items-center gap-1"
           >
             <ArrowLeft className="h-3 w-3" />
-            Already have an account? Sign in
+            Vous avez déjà un compte ? Se connecter
           </Link>
         </div>
 
         <div className="mt-4 text-center text-xs text-muted-foreground">
-          By signing up, you agree to our Terms of Service and Privacy Policy.
+          En créant un compte, vous acceptez les conditions d’utilisation et la politique de confidentialité.
         </div>
       </CardContent>
     </Card>
