@@ -24,11 +24,11 @@ function VerifyEmailContent() {
     } else if (email) {
       setStatus('pending')
       setMessage(
-        `We've sent a verification email to ${email}. Please check your inbox and click the verification link.`
+        `Nous avons envoyé un e-mail de vérification à ${email}. Consultez votre boîte de réception et cliquez sur le lien de vérification.`
       )
     } else {
       setStatus('error')
-      setMessage('No verification token or email provided.')
+      setMessage('Aucun jeton de vérification ni e-mail fourni.')
     }
   }, [token, email])
 
@@ -44,18 +44,18 @@ function VerifyEmailContent() {
 
       if (response.ok) {
         setStatus('success')
-        setMessage('Your email has been verified successfully!')
+        setMessage('Votre adresse e-mail a été vérifiée.')
         toast({
-          title: 'Email verified!',
-          description: 'You can now log in to your account.',
+          title: 'E-mail vérifié',
+          description: 'Vous pouvez maintenant vous connecter à votre compte.',
         })
       } else {
         setStatus('error')
-        setMessage(result.error || 'Verification failed. Please try again.')
+        setMessage(result.error || 'La vérification a échoué. Veuillez réessayer.')
       }
     } catch {
       setStatus('error')
-      setMessage('An error occurred during verification. Please try again.')
+      setMessage('Une erreur est survenue pendant la vérification. Veuillez réessayer.')
     }
   }
 
@@ -63,8 +63,8 @@ function VerifyEmailContent() {
     if (!email) return
 
     toast({
-      title: 'Verification email sent',
-      description: 'Please check your inbox for the verification link.',
+      title: 'E-mail de vérification envoyé',
+      description: 'Consultez votre boîte de réception pour le lien de vérification.',
     })
   }
 
@@ -94,27 +94,27 @@ function VerifyEmailContent() {
           )}
         </div>
         <CardTitle className="text-2xl font-bold">
-          {status === 'loading' && 'Verifying...'}
-          {status === 'success' && 'Email Verified!'}
-          {status === 'error' && 'Verification Failed'}
-          {status === 'pending' && 'Check Your Email'}
+          {status === 'loading' && 'Vérification…'}
+          {status === 'success' && 'E-mail vérifié'}
+          {status === 'error' && 'Échec de la vérification'}
+          {status === 'pending' && 'Consultez votre e-mail'}
         </CardTitle>
         <CardDescription className="text-base">{message}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {status === 'success' && (
           <Button asChild className="w-full">
-            <Link href="/login">Continue to Login</Link>
+            <Link href="/login">Continuer vers la connexion</Link>
           </Button>
         )}
 
         {status === 'error' && (
           <div className="space-y-2">
             <Button asChild variant="outline" className="w-full">
-              <Link href="/signup">Try signing up again</Link>
+              <Link href="/signup">Recommencer l’inscription</Link>
             </Button>
             <Button asChild variant="ghost" className="w-full">
-              <Link href="/login">Back to Login</Link>
+              <Link href="/login">Retour à la connexion</Link>
             </Button>
           </div>
         )}
@@ -123,13 +123,13 @@ function VerifyEmailContent() {
           <div className="space-y-4">
             <div className="text-center text-sm text-muted-foreground">
               <p>Didn&apos;t receive the email?</p>
-              <p>Check your spam folder or click below to resend.</p>
+              <p>Vérifiez vos courriers indésirables ou renvoyez l’e-mail.</p>
             </div>
             <Button variant="outline" className="w-full" onClick={resendVerification}>
-              Resend Verification Email
+              Renvoyer l’e-mail de vérification
             </Button>
             <Button asChild variant="ghost" className="w-full">
-              <Link href="/login">Back to Login</Link>
+              <Link href="/login">Retour à la connexion</Link>
             </Button>
           </div>
         )}

@@ -14,209 +14,146 @@ import { Check, Building2, Zap, Crown, Server, ArrowLeft } from 'lucide-react'
 const plans = [
   {
     id: 'FREE',
-    name: 'Free',
-    price: '0',
-    description: 'Perfect for getting started',
+    name: 'Gratuit',
+    price: '0 MAD',
+    description: 'Pour découvrir DentalERP Maroc',
     icon: Building2,
     features: [
-      'Up to 100 patients',
-      'Up to 3 staff members',
-      '500 MB storage',
-      'Basic reports',
-      'Email support',
-      'Patient management',
-      'Appointment scheduling',
-      'Basic billing',
+      'Jusqu’à 100 patients',
+      'Jusqu’à 3 membres du personnel',
+      '500 Mo de stockage',
+      'Rapports de base',
+      'Gestion des patients',
+      'Gestion des rendez-vous',
+      'Facturation de base',
     ],
-    notIncluded: ['Advanced analytics', 'Custom branding', 'API access', 'Priority support'],
-    cta: 'Get Started Free',
+    cta: 'Commencer gratuitement',
     ctaVariant: 'outline' as const,
   },
   {
     id: 'PROFESSIONAL',
-    name: 'Professional',
-    price: '2,999',
-    description: 'For growing practices',
+    name: 'Professionnel',
+    price: 'Sur devis',
+    description: 'Pour les cabinets dentaires en activité',
     icon: Zap,
     popular: true,
     features: [
-      'Unlimited patients',
-      'Unlimited staff',
-      'Unlimited storage',
-      'Advanced analytics',
-      'Priority support',
-      'Custom branding',
-      'API access',
-      'SMS notifications',
-      'Insurance claims management',
-      'Lab order management',
-      'Inventory management',
-      'Multi-location support',
+      'Patients illimités',
+      'Personnel illimité',
+      'Stockage étendu',
+      'Analyses avancées',
+      'Gestion du laboratoire',
+      'Gestion du stock',
+      'Notifications et communications',
+      'Gestion multi-utilisateurs',
     ],
-    notIncluded: [],
-    cta: 'Start 14-Day Trial',
+    cta: 'Demander un devis',
     ctaVariant: 'default' as const,
   },
   {
     id: 'ENTERPRISE',
-    name: 'Enterprise',
-    price: 'Custom',
-    description: 'For large organizations',
+    name: 'Entreprise',
+    price: 'Sur devis',
+    description: 'Pour les groupes et structures multi-sites',
     icon: Crown,
     features: [
-      'Everything in Professional',
-      'Dedicated account manager',
-      'Custom integrations',
-      'SLA guarantee (99.9% uptime)',
-      'On-premise deployment option',
-      'Advanced security features',
-      'Custom training sessions',
-      'White-label options',
+      'Toutes les fonctions Professionnel',
+      'Gestion multi-sites',
+      'Intégrations personnalisées',
+      'Accompagnement au déploiement',
+      'Fonctions de sécurité avancées',
+      'Formation personnalisée',
     ],
-    notIncluded: [],
-    cta: 'Contact Sales',
+    cta: 'Nous contacter',
     ctaVariant: 'outline' as const,
   },
   {
     id: 'SELF_HOSTED',
-    name: 'Self-Hosted',
-    price: '49,999',
-    priceNote: 'one-time',
-    description: 'Own your data forever',
+    name: 'Auto-hébergé',
+    price: 'Sur devis',
+    description: 'Déploiement sur votre propre infrastructure',
     icon: Server,
     features: [
-      'Full source code access',
-      'Host on your own servers',
-      'No recurring fees',
-      'Unlimited everything',
-      '1 year of updates included',
-      'Installation support',
-      'Documentation & guides',
-      'Community support',
+      'Déploiement sur votre serveur',
+      'Contrôle de vos données',
+      'Scripts Docker',
+      'Documentation de déploiement',
+      'Assistance à l’installation',
     ],
-    notIncluded: [],
-    cta: 'Purchase License',
+    cta: 'Demander un devis',
     ctaVariant: 'outline' as const,
   },
 ]
 
 const faqs = [
   {
-    question: 'Can I switch plans later?',
-    answer:
-      "Yes, you can upgrade or downgrade your plan at any time. When upgrading, you'll get immediate access to new features. When downgrading, changes take effect at the end of your billing cycle.",
+    question: 'Puis-je changer de formule plus tard ?',
+    answer: 'Oui. La formule peut être adaptée lorsque les besoins du cabinet évoluent.',
   },
   {
-    question: 'What happens when I reach my patient limit?',
-    answer:
-      "You'll receive a notification when you're approaching your limit. Once reached, you won't be able to add new patients until you upgrade or remove inactive patient records.",
+    question: 'Les montants sont-ils en dirhams marocains ?',
+    answer: 'Oui. DentalERP Maroc utilise le MAD pour la facturation et les rapports financiers.',
   },
   {
-    question: 'Is there a free trial for paid plans?',
-    answer:
-      'Yes, the Professional plan comes with a 14-day free trial. No credit card required. You can explore all features before deciding to subscribe.',
+    question: 'Puis-je héberger le logiciel sur mon propre serveur ?',
+    answer: 'Oui. Une installation auto-hébergée peut être préparée pour l’infrastructure du cabinet.',
   },
   {
-    question: 'What payment methods do you accept?',
-    answer:
-      'We accept all major credit/debit cards, UPI, net banking, and can arrange invoicing for Enterprise customers.',
-  },
-  {
-    question: 'Can I get a refund?',
-    answer:
-      "We offer a 30-day money-back guarantee for annual subscriptions. If you're not satisfied, contact us for a full refund.",
-  },
-  {
-    question: "What's included in the self-hosted license?",
-    answer:
-      'You get the complete source code, Docker deployment scripts, documentation, and one year of updates. After the first year, you can optionally renew for continued updates.',
+    question: 'Quels moyens de paiement sont prévus pour les patients ?',
+    answer: 'Le cabinet peut enregistrer notamment les paiements en espèces, par carte, virement ou chèque selon sa configuration.',
   },
 ]
 
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/5">
-      {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm">
         <div className="container flex h-14 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
               D
             </div>
-            <span className="font-semibold">DentalERP</span>
+            <span className="font-semibold">DentalERP Maroc</span>
           </Link>
           <nav className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost" size="sm">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button size="sm">Get Started</Button>
-            </Link>
+            <Link href="/login"><Button variant="ghost" size="sm">Se connecter</Button></Link>
+            <Link href="/signup"><Button size="sm">Créer un compte</Button></Link>
           </nav>
         </div>
       </header>
 
       <main className="container py-16">
-        {/* Back link */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8"
-        >
+        <Link href="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8">
           <ArrowLeft className="h-4 w-4" />
-          Back to home
+          Retour à l’accueil
         </Link>
 
-        {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            Simple, transparent pricing
-          </h1>
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Formules DentalERP Maroc</h1>
           <p className="mt-4 text-xl text-muted-foreground max-w-2xl mx-auto">
-            Choose the perfect plan for your dental practice. Start free and scale as you grow.
+            Choisissez une formule adaptée à votre cabinet dentaire.
           </p>
         </div>
 
-        {/* Pricing Cards */}
         <div className="grid gap-8 lg:grid-cols-4 max-w-7xl mx-auto">
           {plans.map((plan) => {
             const Icon = plan.icon
             return (
-              <Card
-                key={plan.id}
-                className={`relative flex flex-col ${
-                  plan.popular ? 'border-primary shadow-lg scale-105' : ''
-                }`}
-              >
+              <Card key={plan.id} className={`relative flex flex-col ${plan.popular ? 'border-primary shadow-lg scale-105' : ''}`}>
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary">Most Popular</Badge>
+                    <Badge className="bg-primary">Recommandé</Badge>
                   </div>
                 )}
                 <CardHeader>
                   <div className="flex items-center gap-2 mb-2">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                        plan.popular ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                      }`}
-                    >
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${plan.popular ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                   </div>
                   <CardTitle className="text-xl">{plan.name}</CardTitle>
                   <CardDescription>{plan.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold">
-                      {plan.price === 'Custom' ? '' : '₹'}
-                      {plan.price}
-                    </span>
-                    {plan.priceNote ? (
-                      <span className="text-muted-foreground"> {plan.priceNote}</span>
-                    ) : plan.price !== '0' && plan.price !== 'Custom' ? (
-                      <span className="text-muted-foreground">/month</span>
-                    ) : null}
-                  </div>
+                  <div className="mt-4"><span className="text-3xl font-bold">{plan.price}</span></div>
                 </CardHeader>
                 <CardContent className="flex-1">
                   <ul className="space-y-3">
@@ -230,9 +167,7 @@ export default function PricingPage() {
                 </CardContent>
                 <CardFooter>
                   <Link href="/signup" className="w-full">
-                    <Button className="w-full" variant={plan.ctaVariant}>
-                      {plan.cta}
-                    </Button>
+                    <Button className="w-full" variant={plan.ctaVariant}>{plan.cta}</Button>
                   </Link>
                 </CardFooter>
               </Card>
@@ -240,47 +175,18 @@ export default function PricingPage() {
           })}
         </div>
 
-        {/* FAQ Section */}
         <div className="mt-24 max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Frequently asked questions</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">Questions fréquentes</h2>
           <div className="space-y-6">
             {faqs.map((faq) => (
               <Card key={faq.question}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{faq.question}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{faq.answer}</p>
-                </CardContent>
+                <CardHeader><CardTitle className="text-lg">{faq.question}</CardTitle></CardHeader>
+                <CardContent><p className="text-muted-foreground">{faq.answer}</p></CardContent>
               </Card>
             ))}
           </div>
         </div>
-
-        {/* CTA Section */}
-        <div className="mt-24 text-center">
-          <Card className="bg-primary text-primary-foreground max-w-3xl mx-auto">
-            <CardContent className="py-12">
-              <h2 className="text-2xl font-bold mb-4">Ready to get started?</h2>
-              <p className="text-lg opacity-90 mb-8">
-                Start with our free plan and upgrade when you need more.
-              </p>
-              <Link href="/signup">
-                <Button size="lg" variant="secondary">
-                  Create Free Account
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t mt-24 py-8">
-        <div className="container text-center text-sm text-muted-foreground">
-          DentalERP - Complete Dental Practice Management Solution
-        </div>
-      </footer>
     </div>
   )
 }
