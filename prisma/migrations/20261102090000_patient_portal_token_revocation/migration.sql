@@ -1,0 +1,1 @@
+ALTER TABLE `Patient` ADD COLUMN `portalAuthVersion` INTEGER NOT NULL DEFAULT 0;
