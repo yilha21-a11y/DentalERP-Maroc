@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast'
 
 const loginSchema = z.object({
   email: z.string().email('Veuillez saisir une adresse e-mail valide'),
-  password: z.string().min(6, 'Le mot de passe doit contenir au moins 6 caractères'),
+  password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
@@ -25,7 +25,11 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const requestedCallback = searchParams.get('callbackUrl')
+  const callbackUrl =
+    requestedCallback?.startsWith('/') && !requestedCallback.startsWith('//')
+      ? requestedCallback
+      : '/dashboard'
 
   const {
     register,
@@ -75,7 +79,7 @@ function LoginForm() {
           </div>
         </div>
         <CardTitle className="text-2xl font-bold">Bienvenue</CardTitle>
-        <CardDescription>Connectez-vous à votre compte DentalERP</CardDescription>
+        <CardDescription>Connectez-vous à votre compte DentalERP Maroc</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -118,10 +122,6 @@ function LoginForm() {
           </p>
         </div>
 
-        <div className="mt-4 text-center text-xs text-muted-foreground border-t pt-4">
-          <p>Identifiants de démonstration :</p>
-          <p className="font-mono mt-1">admin@demo-dental.com / Admin@123</p>
-        </div>
       </CardContent>
     </Card>
   )
