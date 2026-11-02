@@ -92,6 +92,7 @@ model Hospital {
   communicationTemplates CommunicationTemplate[]
   smsLogs             SMSLog[]
   emailLogs           EmailLog[]
+  whatsAppLogs        WhatsAppLog[]
   surveys             Survey[]
   bulkCommunications  BulkCommunication[]
   marketingAutomations MarketingAutomation[]
