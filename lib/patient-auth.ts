@@ -13,6 +13,7 @@ interface PatientTokenPayload {
   patientId: string
   hospitalId: string
   phone: string
+  authVersion: number
 }
 
 function getPatientJwtSecret(): Uint8Array {
@@ -71,7 +72,8 @@ async function verifyPatientToken(token: string): Promise<PatientTokenPayload | 
     if (
       typeof payload.patientId !== 'string' ||
       typeof payload.hospitalId !== 'string' ||
-      typeof payload.phone !== 'string'
+      typeof payload.phone !== 'string' ||
+      typeof payload.authVersion !== 'number'
     ) {
       return null
     }
@@ -80,6 +82,7 @@ async function verifyPatientToken(token: string): Promise<PatientTokenPayload | 
       patientId: payload.patientId,
       hospitalId: payload.hospitalId,
       phone: payload.phone,
+      authVersion: payload.authVersion,
     }
   } catch {
     return null
@@ -121,12 +124,14 @@ export async function getAuthenticatedPatient(req?: NextRequest) {
       lastName: true,
       phone: true,
       email: true,
+      portalAuthVersion: true,
     },
   })
 
-  if (!patient) return null
+  if (!patient || patient.portalAuthVersion !== payload.authVersion) return null
 
-  return patient
+  const { portalAuthVersion: _portalAuthVersion, ...safePatient } = patient
+  return safePatient
 }
 
 /**
