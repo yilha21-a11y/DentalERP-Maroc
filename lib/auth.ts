@@ -40,8 +40,12 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 
         if (!user || !user.isActive) return null
 
-        // Check if the user's hospital is active
-        if (!user.hospital || !user.hospital.isActive) return null
+        // New clinic registrations must verify their email before login.
+        if (
+          !user.hospital ||
+          !user.hospital.isActive ||
+          user.hospital.emailVerificationToken !== null
+        ) return null
 
         const passwordMatch = await bcrypt.compare(password, user.password)
         if (!passwordMatch) return null
