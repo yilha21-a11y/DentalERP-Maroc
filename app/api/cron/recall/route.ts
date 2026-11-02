@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireCronAuth } from '@/lib/cron-auth'
 
 /**
  * GET /api/cron/recall
