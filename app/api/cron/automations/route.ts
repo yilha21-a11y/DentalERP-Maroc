@@ -17,10 +17,8 @@ import { requireCronAuth } from '@/lib/cron-auth'
  *  - PAYMENT_OVERDUE: invoices overdue by X days
  */
 export async function POST(req: Request) {
-  const secret = req.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireCronAuth(req)
+  if (authError) return authError
 
   const automations = await prisma.marketingAutomation.findMany({
     where: { isActive: true },
@@ -62,12 +60,14 @@ export async function POST(req: Request) {
           const targetMonth = targetDate.getMonth() + 1
           const targetDay = targetDate.getDate()
           // Find patients with birthdays matching the target date
-          const patients = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-            `SELECT id FROM Patient WHERE hospitalId = ? AND isActive = 1 AND MONTH(dateOfBirth) = ? AND DAY(dateOfBirth) = ?`,
-            auto.hospitalId,
-            targetMonth,
-            targetDay
-          )
+          const patients = await prisma.$queryRaw<Array<{ id: string }>>`
+            SELECT id
+            FROM Patient
+            WHERE hospitalId = ${auto.hospitalId}
+              AND isActive = 1
+              AND MONTH(dateOfBirth) = ${targetMonth}
+              AND DAY(dateOfBirth) = ${targetDay}
+          `
           matchedPatientIds = patients.map((p) => p.id)
           break
         }
