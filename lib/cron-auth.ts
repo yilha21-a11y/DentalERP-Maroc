@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 function safeEqual(left: string, right: string): boolean {
   const a = Buffer.from(left)
@@ -12,7 +12,7 @@ function safeEqual(left: string, right: string): boolean {
  * Shared authentication guard for cron endpoints.
  * Returns null when authorized, otherwise a response that must be returned.
  */
-export function requireCronAuth(req: NextRequest): NextResponse | null {
+export function requireCronAuth(req: Request): NextResponse | null {
   const secret = process.env.CRON_SECRET
 
   // Never allow "Bearer undefined" or an empty secret.
