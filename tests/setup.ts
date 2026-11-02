@@ -43,7 +43,7 @@ process.env.NEXTAUTH_URL = 'http://localhost:3000'
 process.env.OPENROUTER_API_KEY = 'test-openrouter-api-key'
 process.env.CRON_SECRET = 'test-cron-secret'
 process.env.ENCRYPTION_KEY = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2'
-process.env.TZ = 'Asia/Kolkata'
+process.env.TZ = 'Africa/Casablanca'
 
 // Global fetch mock
 global.fetch = vi.fn()
