@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuthAndRole } from '@/lib/api-helpers'
 import prisma from '@/lib/prisma'
 import { getStorage, StorageNotFoundError, toStorageKey } from '@/lib/storage'
+import { safeDownloadName } from '@/lib/file-security'
+import { DocumentType } from '@prisma/client'
+import { z } from 'zod'
 
 // GET /api/patients/[id]/documents/[documentId] - Get/download a specific document
 export async function GET(
@@ -57,10 +60,15 @@ export async function GET(
       throw err
     }
 
+    const safeName = safeDownloadName(document.originalName)
+    const encodedName = encodeURIComponent(document.originalName.replace(/[\r\n\0]/g, ''))
+
     return new NextResponse(new Uint8Array(object.body), {
       headers: {
         'Content-Type': document.fileType,
-        'Content-Disposition': `attachment; filename="${document.originalName}"`,
+        'Content-Disposition': `attachment; filename="${safeName}"; filename*=UTF-8''${encodedName}`,
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'private, no-store',
         // The stored size, not the recorded one — they disagree if a file was
         // ever replaced out of band, and a wrong Content-Length truncates.
         'Content-Length': object.size.toString(),
@@ -68,10 +76,7 @@ export async function GET(
     })
   } catch (error: any) {
     console.error('Error fetching document:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch document' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Impossible de charger le document' }, { status: 500 })
   }
 }
 
@@ -101,22 +106,35 @@ export async function PATCH(
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
-    const body = await req.json()
-    const { description, documentType, treatmentId } = body
+    const parsed = z.object({
+      description: z.string().trim().max(4000).nullable().optional(),
+      documentType: z.enum(['XRAY', 'CT_SCAN', 'PHOTO', 'CONSENT_FORM', 'PRESCRIPTION', 'LAB_REPORT', 'INSURANCE', 'ID_PROOF', 'OTHER']).optional(),
+      treatmentId: z.string().min(1).nullable().optional(),
+    }).safeParse(await req.json())
 
-    const updateData: any = {}
-
-    if (description !== undefined) {
-      updateData.description = description
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Métadonnées invalides' }, { status: 400 })
     }
 
-    if (documentType) {
-      updateData.documentType = documentType
+    if (parsed.data.treatmentId) {
+      const treatment = await prisma.treatment.findFirst({
+        where: { id: parsed.data.treatmentId, patientId: id, hospitalId },
+        select: { id: true },
+      })
+      if (!treatment) {
+        return NextResponse.json({ error: 'Traitement associé invalide' }, { status: 400 })
+      }
     }
 
-    if (treatmentId !== undefined) {
-      updateData.treatmentId = treatmentId || null
-    }
+    const updateData: {
+      description?: string | null
+      documentType?: DocumentType
+      treatmentId?: string | null
+    } = {}
+
+    if (parsed.data.description !== undefined) updateData.description = parsed.data.description
+    if (parsed.data.documentType) updateData.documentType = parsed.data.documentType as DocumentType
+    if (parsed.data.treatmentId !== undefined) updateData.treatmentId = parsed.data.treatmentId
 
     const updatedDocument = await prisma.document.update({
       where: { id: documentId },
@@ -129,10 +147,7 @@ export async function PATCH(
     })
   } catch (error: any) {
     console.error('Error updating document:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to update document' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Impossible de modifier le document' }, { status: 500 })
   }
 }
 
@@ -196,9 +211,6 @@ export async function DELETE(
     }
   } catch (error: any) {
     console.error('Error deleting document:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete document' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Impossible de supprimer le document' }, { status: 500 })
   }
 }

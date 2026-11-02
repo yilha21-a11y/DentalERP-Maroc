@@ -3,50 +3,66 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { SignJWT } from 'jose'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(8).max(200),
 })
 
-// Mobile-specific login endpoint that returns a JWT token directly
-// instead of setting cookies (which don't work well in native apps)
+const MOBILE_ISSUER = 'dentalerp-maroc'
+const MOBILE_AUDIENCE = 'mobile-api'
+
+function getMobileSecret(): Uint8Array {
+  const secret = process.env.NEXTAUTH_SECRET
+  if (!secret || secret.length < 32) {
+    throw new Error('NEXTAUTH_SECRET must be configured with at least 32 characters')
+  }
+  return new TextEncoder().encode(secret)
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const validated = loginSchema.safeParse(body)
-
+    const validated = loginSchema.safeParse(await req.json())
     if (!validated.success) {
-      return NextResponse.json({ error: 'Invalid email or password format' }, { status: 400 })
+      return NextResponse.json({ error: 'Identifiants invalides' }, { status: 400 })
     }
 
-    const { email, password } = validated.data
+    const email = validated.data.email.trim().toLowerCase()
+    const { password } = validated.data
+
+    const rate = await checkRateLimit(
+      `mobile-login:${getClientIp(req)}:${email}`,
+      10,
+      15 * 60 * 1000
+    )
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de tentatives. Réessayez plus tard.' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } }
+      )
+    }
 
     const user = await prisma.user.findUnique({
       where: { email },
-      include: {
-        staff: true,
-        hospital: true,
-      },
+      include: { staff: true, hospital: true },
     })
 
-    if (!user || !user.isActive) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
-    }
-
-    if (!user.hospital || !user.hospital.isActive) {
-      return NextResponse.json({ error: 'Your clinic account is inactive' }, { status: 401 })
+    if (
+      !user ||
+      !user.isActive ||
+      !user.hospital?.isActive ||
+      user.hospital.emailVerificationToken !== null
+    ) {
+      return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 })
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password)
     if (!passwordMatch) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 })
     }
 
-    // Create JWT token using jose directly (avoids NextAuth encode() salt issues)
-    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
     const token = await new SignJWT({
-      sub: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
@@ -55,9 +71,13 @@ export async function POST(req: NextRequest) {
       isHospitalAdmin: user.isHospitalAdmin,
     })
       .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(user.id)
+      .setIssuer(MOBILE_ISSUER)
+      .setAudience(MOBILE_AUDIENCE)
       .setIssuedAt()
+      .setJti(crypto.randomUUID())
       .setExpirationTime('8h')
-      .sign(secret)
+      .sign(getMobileSecret())
 
     return NextResponse.json({
       token,
@@ -74,18 +94,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error('Mobile auth error:', error)
-    return NextResponse.json({ error: 'Authentication failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Authentification indisponible' }, { status: 500 })
   }
-}
-
-// Handle CORS preflight
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  })
 }

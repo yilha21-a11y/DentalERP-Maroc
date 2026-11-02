@@ -4,22 +4,31 @@ import bcrypt from 'bcryptjs'
 import { authConfig } from './auth.config'
 import { prisma } from './prisma'
 import { z } from 'zod'
+import { checkRateLimit, getClientIp } from './rate-limit'
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(8).max(200),
 })
 
 export const { auth, signIn, signOut, handlers } = NextAuth({
   ...authConfig,
   providers: [
     Credentials({
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const validated = loginSchema.safeParse(credentials)
 
         if (!validated.success) return null
 
-        const { email, password } = validated.data
+        const email = validated.data.email.trim().toLowerCase()
+        const { password } = validated.data
+
+        const rate = await checkRateLimit(
+          `web-login:${getClientIp(request)}:${email}`,
+          10,
+          15 * 60 * 1000
+        )
+        if (!rate.allowed) return null
 
         const user = await prisma.user.findUnique({
           where: { email },
@@ -31,8 +40,12 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 
         if (!user || !user.isActive) return null
 
-        // Check if the user's hospital is active
-        if (!user.hospital || !user.hospital.isActive) return null
+        // New clinic registrations must verify their email before login.
+        if (
+          !user.hospital ||
+          !user.hospital.isActive ||
+          user.hospital.emailVerificationToken !== null
+        ) return null
 
         const passwordMatch = await bcrypt.compare(password, user.password)
         if (!passwordMatch) return null

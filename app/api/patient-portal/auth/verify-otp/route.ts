@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { createPatientToken, setPatientCookie } from '@/lib/patient-auth'
+import { createPatientToken, setPatientCookie, verifyOTPHash } from '@/lib/patient-auth'
+import { normalizeMoroccoPhone } from '@/lib/services/whatsapp.service'
+
+const requestSchema = z.object({
+  phone: z.string().min(8).max(20),
+  otp: z.string().regex(/^\d{6}$/),
+  hospitalSlug: z.string().min(2).max(100),
+})
+
+function canonicalPhone(phone: string): string {
+  return `+${normalizeMoroccoPhone(phone)}`
+}
+
+function patientPhoneCandidates(phone: string): string[] {
+  const normalized = normalizeMoroccoPhone(phone)
+  const local = normalized.startsWith('212') ? `0${normalized.slice(3)}` : phone
+  return Array.from(new Set([phone.trim(), `+${normalized}`, normalized, local]))
+}
 
 /**
  * POST: Verify OTP and return JWT in httpOnly cookie.
@@ -8,73 +26,52 @@ import { createPatientToken, setPatientCookie } from '@/lib/patient-auth'
  */
 export async function POST(req: NextRequest) {
   try {
-    const { phone, otp, hospitalSlug } = (await req.json()) as {
-      phone: string
-      otp: string
-      hospitalSlug: string
+    const parsed = requestSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Code de vérification invalide' }, { status: 400 })
     }
 
-    if (!phone || !otp || !hospitalSlug) {
-      return NextResponse.json(
-        { error: 'Phone, OTP, and clinic identifier are required' },
-        { status: 400 }
-      )
-    }
+    const { phone, otp, hospitalSlug } = parsed.data
+    const normalizedPhone = canonicalPhone(phone)
 
-    // Find hospital
     const hospital = await prisma.hospital.findUnique({
       where: { slug: hospitalSlug },
-      select: { id: true, name: true },
+      select: { id: true, patientPortalEnabled: true },
     })
 
-    if (!hospital) {
-      return NextResponse.json({ error: 'Clinic not found' }, { status: 404 })
+    if (!hospital || !hospital.patientPortalEnabled) {
+      return NextResponse.json({ error: 'Code invalide ou expiré' }, { status: 400 })
     }
 
-    // Find the most recent unverified OTP for this phone
     const otpRecord = await prisma.patientOTP.findFirst({
       where: {
         hospitalId: hospital.id,
-        phone,
+        phone: normalizedPhone,
         verified: false,
         expiresAt: { gt: new Date() },
       },
       orderBy: { createdAt: 'desc' },
     })
 
-    if (!otpRecord) {
-      return NextResponse.json(
-        { error: 'OTP expired or not found. Please request a new one.' },
-        { status: 400 }
-      )
+    if (!otpRecord || otpRecord.attempts >= 3) {
+      return NextResponse.json({ error: 'Code invalide ou expiré' }, { status: 400 })
     }
 
-    // Check attempts (max 3)
-    if (otpRecord.attempts >= 3) {
-      return NextResponse.json(
-        { error: 'Too many failed attempts. Please request a new OTP.' },
-        { status: 429 }
-      )
-    }
-
-    // Verify OTP
-    if (otpRecord.otp !== otp) {
+    const valid = await verifyOTPHash(otp, otpRecord.otp)
+    if (!valid) {
       await prisma.patientOTP.update({
         where: { id: otpRecord.id },
         data: { attempts: { increment: 1 } },
       })
-      return NextResponse.json({ error: 'Invalid OTP. Please try again.' }, { status: 400 })
+      return NextResponse.json({ error: 'Code invalide ou expiré' }, { status: 400 })
     }
 
-    // Mark OTP as verified
-    await prisma.patientOTP.update({
-      where: { id: otpRecord.id },
-      data: { verified: true },
-    })
-
-    // Find the patient
     const patient = await prisma.patient.findFirst({
-      where: { hospitalId: hospital.id, phone, isActive: true },
+      where: {
+        hospitalId: hospital.id,
+        phone: { in: patientPhoneCandidates(phone) },
+        isActive: true,
+      },
       select: {
         id: true,
         hospitalId: true,
@@ -83,18 +80,25 @@ export async function POST(req: NextRequest) {
         lastName: true,
         phone: true,
         email: true,
+        portalAuthVersion: true,
       },
     })
 
     if (!patient) {
-      return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Code invalide ou expiré' }, { status: 400 })
     }
 
-    // Generate JWT
+    // Consume the OTP only when the patient lookup also succeeds.
+    await prisma.patientOTP.update({
+      where: { id: otpRecord.id },
+      data: { verified: true },
+    })
+
     const token = await createPatientToken({
       patientId: patient.id,
       hospitalId: patient.hospitalId,
       phone: patient.phone,
+      authVersion: patient.portalAuthVersion,
     })
 
     const response = NextResponse.json({
@@ -111,6 +115,6 @@ export async function POST(req: NextRequest) {
     return setPatientCookie(response, token)
   } catch (err: unknown) {
     console.error('Verify OTP error:', err)
-    return NextResponse.json({ error: 'Verification failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Vérification impossible' }, { status: 500 })
   }
 }

@@ -31,7 +31,7 @@ model Hospital {
   website             String?
   tagline             String?
 
-  // Localization. Defaults keep existing clinics on Indian formatting.
+  // Localisation par défaut pour DentalERP Maroc.
   // `country` will select the tax provider — see docs/LOCALIZATION.md.
   locale              String    @default("fr-MA")
   country             String    @default("MA")
@@ -64,6 +64,7 @@ model Hospital {
   staff               Staff[]
   patients            Patient[]
   appointments        Appointment[]
+  waitingRoomEntries   WaitingRoomEntry[]
   treatments          Treatment[]
   treatmentPlans      TreatmentPlan[]
   dentalChartEntries  DentalChartEntry[]
@@ -86,10 +87,12 @@ model Hospital {
   notifications       Notification[]
   auditLogs           AuditLog[]
   settings            Setting[]
+  rolePermissions     RolePermission[]
   holidays            Holiday[]
   communicationTemplates CommunicationTemplate[]
   smsLogs             SMSLog[]
   emailLogs           EmailLog[]
+  whatsAppLogs        WhatsAppLog[]
   surveys             Survey[]
   bulkCommunications  BulkCommunication[]
   marketingAutomations MarketingAutomation[]
@@ -125,6 +128,9 @@ model Hospital {
   devices             Device[]
   pushDevices         PushDevice[]
   dataImportJobs      DataImportJob[]
+  internalConversations InternalConversation[]
+  receptionCharges    ReceptionCharge[]
+  receptionPayments   ReceptionPayment[]
 
   @@index([slug])
   @@index([plan])
@@ -189,6 +195,19 @@ enum SubscriptionPaymentStatus {
   REFUNDED
 }
 
+// ==================== SECURITY RATE LIMITING ====================
+
+model RateLimitBucket {
+  id          String   @id @default(cuid())
+  keyHash     String   @unique
+  count       Int      @default(1)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
 // ==================== AUTHENTICATION & USERS ====================
 
 model User {
@@ -207,7 +226,7 @@ model User {
 
   // Personal locale override, BCP 47. NULL means "inherit from the clinic" and
   // is deliberately NOT defaulted: a default would be indistinguishable from an
-  // explicit choice of en-IN, so a clinic changing its own locale would
+  // explicit locale choice, so a clinic changing its own locale would
   // silently fail to propagate to every staff member who never expressed a
   // preference. See docs/LOCALIZATION.md.
   locale          String?
@@ -225,6 +244,9 @@ model User {
   pushDevices     PushDevice[]
   dataImportJobs  DataImportJob[]
   acknowledgedStockAlerts StockAlert[]
+  internalConversationMemberships InternalConversationMember[]
+  internalMessagesSent InternalMessage[]
+  receptionPaymentsReceived ReceptionPayment[]
   labOrderStatusChanges   LabOrderHistory[]
   uploadedLabOrderDocuments LabOrderDocument[]
 
@@ -350,6 +372,7 @@ model Staff {
   shifts          StaffShift[]
   leaves          Leave[]
   videoConsultations VideoConsultation[] @relation("DoctorVideoConsultations")
+  staffReceptionCharges ReceptionCharge[]
 
   @@unique([hospitalId, employeeId])
   @@index([hospitalId])
@@ -471,6 +494,7 @@ model Patient {
   aiSummaryAt     DateTime?
 
   isActive        Boolean    @default(true)
+  portalAuthVersion Int       @default(0)
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
@@ -491,6 +515,8 @@ model Patient {
   memberships     PatientMembership[]
   paymentPlans    PaymentPlan[]
   videoConsultations VideoConsultation[]
+  patientWhatsAppLogs WhatsAppLog[]
+  receptionCharges ReceptionCharge[]
 
   @@unique([hospitalId, patientId])
   @@index([hospitalId])
@@ -614,6 +640,8 @@ model Appointment {
   doctor          Staff             @relation("DoctorAppointments", fields: [doctorId], references: [id])
   treatments      Treatment[]
   reminders       AppointmentReminder[]
+  waitingRoomEntry WaitingRoomEntry?
+  appointmentWhatsAppLogs WhatsAppLog[]
   videoConsultation VideoConsultation?
 
   @@unique([hospitalId, appointmentNo])
@@ -637,6 +665,33 @@ model AppointmentReminder {
 
   @@index([scheduledFor])
   @@index([status])
+}
+
+model WaitingRoomEntry {
+  id            String            @id @default(cuid())
+  hospitalId    String
+  appointmentId String            @unique
+  status        WaitingRoomStatus @default(WAITING)
+  roomLabel     String?           @db.VarChar(100)
+  arrivedAt     DateTime          @default(now())
+  calledAt      DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  updatedAt     DateTime          @updatedAt
+
+  hospital      Hospital          @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  appointment   Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([hospitalId, status])
+  @@index([arrivedAt])
+}
+
+enum WaitingRoomStatus {
+  WAITING
+  CALLED
+  IN_CONSULTATION
+  COMPLETED
+  CANCELLED
 }
 
 enum AppointmentType {
@@ -889,6 +944,7 @@ model Treatment {
   doctor          Staff           @relation(fields: [doctorId], references: [id])
   invoiceItems    InvoiceItem[]
   documents       Document[]
+  treatmentReceptionCharges ReceptionCharge[]
 
   @@unique([hospitalId, treatmentNo])
   @@index([hospitalId])
@@ -2420,6 +2476,152 @@ enum FormSubmissionStatus {
   REVIEWED
   APPROVED
   REJECTED
+}
+
+// ==================== OPERATIONAL TABLES ====================
+
+model RolePermission {
+  id         String   @id @default(cuid())
+  hospitalId String
+  role       String   @db.VarChar(50)
+  permission String   @db.VarChar(100)
+  allowed    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  hospital   Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, role, permission])
+  @@index([hospitalId])
+}
+
+model InternalConversation {
+  id          String   @id @default(cuid())
+  hospitalId  String
+  name        String?
+  isGroup     Boolean  @default(false)
+  isBroadcast Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hospital    Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  members     InternalConversationMember[]
+  messages    InternalMessage[]
+
+  @@index([hospitalId])
+}
+
+model InternalConversationMember {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+  joinedAt       DateTime @default(now())
+
+  conversation   InternalConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model InternalMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String   @db.Text
+  attachmentUrl  String?  @db.Text
+  isUrgent       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation   InternalConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User                 @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model ReceptionCharge {
+  id          String                @id @default(cuid())
+  hospitalId  String
+  patientId   String
+  treatmentId String?
+  doctorId    String
+  amount      Decimal               @db.Decimal(10, 2)
+  discount    Decimal               @default(0) @db.Decimal(10, 2)
+  amountPaid  Decimal               @default(0) @db.Decimal(10, 2)
+  status      ReceptionChargeStatus @default(PENDING)
+  notes       String?               @db.Text
+  sentAt      DateTime              @default(now())
+  paidAt      DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  hospital    Hospital              @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  patient     Patient               @relation(fields: [patientId], references: [id])
+  treatment   Treatment?            @relation(fields: [treatmentId], references: [id], onDelete: SetNull)
+  doctor      Staff                 @relation(fields: [doctorId], references: [id])
+  payments    ReceptionPayment[]
+
+  @@index([hospitalId, status])
+  @@index([doctorId, sentAt])
+  @@index([treatmentId])
+}
+
+enum ReceptionChargeStatus {
+  PENDING
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+model ReceptionPayment {
+  id           String                 @id @default(cuid())
+  hospitalId   String
+  chargeId     String
+  amount       Decimal                @db.Decimal(10, 2)
+  method       ReceptionPaymentMethod @default(CASH)
+  reference    String?
+  receivedById String
+  createdAt    DateTime               @default(now())
+
+  hospital     Hospital               @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  charge       ReceptionCharge        @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  receivedBy   User                   @relation(fields: [receivedById], references: [id])
+
+  @@index([chargeId, createdAt])
+  @@index([hospitalId, createdAt])
+}
+
+enum ReceptionPaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  CHEQUE
+  OTHER
+}
+
+model WhatsAppLog {
+  id                String   @id @default(cuid())
+  hospitalId        String
+  patientId         String?
+  appointmentId     String?
+  phone             String   @db.VarChar(40)
+  templateName      String?
+  messageType       String   @db.VarChar(50)
+  status            String   @default("PENDING") @db.VarChar(50)
+  providerMessageId String?
+  errorMessage      String?  @db.Text
+  sentAt            DateTime?
+  createdAt         DateTime @default(now())
+
+  hospital          Hospital     @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  patient           Patient?     @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  appointment       Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([hospitalId, createdAt])
+  @@index([appointmentId])
+  @@index([patientId])
 }
 
 // ==================== PATIENT PORTAL ====================

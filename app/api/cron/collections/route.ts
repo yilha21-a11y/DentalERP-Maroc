@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireCronAuth } from '@/lib/cron-auth'
 
 /**
  * GET /api/cron/collections
- * Scheduled: daily 10:00 IST
+ * Scheduled: daily 10:00 (Africa/Casablanca)
  *
  * 1) Identifies overdue invoices, classifies by escalation tier,
  *    and creates notifications for the appropriate staff.
@@ -20,10 +21,8 @@ import { prisma } from '@/lib/prisma'
  *   - 3+ days overdue: overdue notification + mark installment as OVERDUE
  */
 export async function GET(req: Request) {
-  const secret = req.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireCronAuth(req)
+  if (authError) return authError
 
   const now = new Date()
   const today = new Date(now)

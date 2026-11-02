@@ -1,7 +1,7 @@
 {
-  "name": "DentalERP - Dental Hospital Management",
-  "short_name": "DentalERP",
-  "description": "Comprehensive dental hospital management system",
+  "name": "DentalERP Maroc - Gestion de cabinet dentaire",
+  "short_name": "DentalERP Maroc",
+  "description": "Gestion complète de cabinet dentaire au Maroc",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0a0a",
@@ -17,5 +17,6 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "lang": "fr-MA"
 }

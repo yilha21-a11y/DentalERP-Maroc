@@ -7,12 +7,12 @@ import { cn } from '@/lib/utils'
 // Constants
 // ---------------------------------------------------------------------------
 const EXAMPLE_QUERIES = [
-  'Monthly revenue by procedure for last 3 months',
-  "Patients who haven't visited in 6 months",
-  'Overdue invoices sorted by amount',
-  'Appointment no-show rate by day of week',
-  'Top 5 most performed procedures this quarter',
-  'Inventory items running low on stock',
+  'Chiffre d’affaires mensuel par acte sur les 3 derniers mois',
+  "Patients sans visite depuis 6 mois",
+  'Factures en retard triées par montant',
+  'Taux d’absence aux rendez-vous par jour de la semaine',
+  'Les 5 actes les plus réalisés ce trimestre',
+  'Articles dont le stock est faible',
 ]
 
 interface QueryResult {
@@ -53,11 +53,11 @@ export function ReportBuilder() {
       if (res.ok) {
         setResult({ success: true, ...data })
       } else {
-        setResult({ success: false, error: data.error || 'Query failed' })
+        setResult({ success: false, error: data.error || 'La requête a échoué' })
       }
       setHistory((prev) => [query.trim(), ...prev.filter((h) => h !== query.trim())].slice(0, 10))
     } catch {
-      setResult({ success: false, error: 'Failed to execute query' })
+      setResult({ success: false, error: 'Impossible d’exécuter la requête' })
     } finally {
       setLoading(false)
     }
@@ -84,10 +84,10 @@ export function ReportBuilder() {
       {/* header */}
       <div>
         <h3 className="text-sm font-semibold flex items-center gap-2">
-          <span>🤖</span> Natural Language Report Builder
+          <span>🤖</span> Générateur de rapports en langage naturel
         </h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Ask questions in plain English — AI queries your data and returns results.
+          Posez votre question en français : l’IA interroge les données et retourne les résultats.
         </p>
       </div>
 
@@ -103,7 +103,7 @@ export function ReportBuilder() {
           onKeyDown={(e) => {
             if (e.key === 'Enter') execute()
           }}
-          placeholder="e.g. 'Show revenue by procedure for last month'"
+          placeholder="ex. « Afficher le chiffre d’affaires par acte le mois dernier »"
           className="flex-1 rounded-md border bg-muted px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground"
         />
         <button
@@ -111,7 +111,7 @@ export function ReportBuilder() {
           disabled={loading || !query.trim()}
           className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
         >
-          {loading ? 'Generating…' : 'Generate'}
+          {loading ? 'Génération…' : 'Générer'}
         </button>
       </div>
 
@@ -134,7 +134,7 @@ export function ReportBuilder() {
       {/* recent history (shown when idle) */}
       {history.length > 0 && !result && !loading && (
         <div>
-          <p className="text-xs text-muted-foreground font-medium mb-1">Recent queries</p>
+          <p className="text-xs text-muted-foreground font-medium mb-1">Requêtes récentes</p>
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {history.slice(0, 5).map((h, i) => (
               <button
@@ -156,7 +156,7 @@ export function ReportBuilder() {
       {loading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
-          <span>Querying your data…</span>
+          <span>Analyse des données…</span>
         </div>
       )}
 
@@ -172,7 +172,7 @@ export function ReportBuilder() {
 
           {/* error */}
           {!result.success && (
-            <div className="p-3 text-sm text-red-600">{result.error || 'Query failed'}</div>
+            <div className="p-3 text-sm text-red-600">{result.error || 'La requête a échoué'}</div>
           )}
 
           {/* data table */}
@@ -212,7 +212,7 @@ export function ReportBuilder() {
           {/* empty state */}
           {result.success && (!result.rows || result.rows.length === 0) && (
             <div className="p-3 text-sm text-muted-foreground">
-              No results found for this query.
+              Aucun résultat trouvé pour cette requête.
             </div>
           )}
 
@@ -223,7 +223,7 @@ export function ReportBuilder() {
                 onClick={exportJSON}
                 className="text-xs text-muted-foreground hover:text-primary transition-colors"
               >
-                ⬇ Export JSON
+                ⬇ Exporter en JSON
               </button>
             </div>
           )}

@@ -1,8 +1,23 @@
 const createNextIntlPlugin = require('next-intl/plugin')
 
-// Locale comes from the clinic record, not the URL, so there is no routing
-// config here — just the pointer to the request config. See docs/LOCALIZATION.md.
 const withNextIntl = createNextIntlPlugin('./lib/i18n/request.ts')
+
+const isProduction = process.env.NODE_ENV === 'production'
+
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${isProduction ? '' : " 'unsafe-eval'"}`,
+  "connect-src 'self' https: wss:",
+  "frame-src 'self' https://meet.jit.si",
+  "worker-src 'self' blob:",
+].join('; ')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -15,46 +30,48 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  // Production optimizations
   poweredByHeader: false,
   compress: true,
   reactStrictMode: true,
-  // Ignore TypeScript errors in test files during build
   typescript: {
     ignoreBuildErrors: false,
   },
-  // Logging
   logging: {
     fetches: {
       fullUrl: false,
     },
   },
-  // CORS for mobile app
+
+  /**
+   * No wildcard CORS is emitted here.
+   * DentalERP Maroc web traffic is same-origin. A future mobile API must use
+   * an explicit allow-list and must not combine "*" with credentials.
+   */
   async headers() {
+    const securityHeaders = [
+      { key: 'Content-Security-Policy', value: contentSecurityPolicy },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      {
+        key: 'Permissions-Policy',
+        value: 'camera=(self), microphone=(self), geolocation=()',
+      },
+      { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+      { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+    ]
+
+    if (isProduction) {
+      securityHeaders.push({
+        key: 'Strict-Transport-Security',
+        value: 'max-age=31536000; includeSubDomains',
+      })
+    }
+
     return [
       {
-        // CORS headers for API routes (mobile app access)
-        source: '/api/:path*',
-        headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, PATCH, DELETE, OPTIONS' },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, Cookie, X-CSRF-Token',
-          },
-          { key: 'Access-Control-Allow-Credentials', value: 'true' },
-        ],
-      },
-      {
-        // Security headers for all routes
         source: '/(.*)',
-        headers: [
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=()' },
-        ],
+        headers: securityHeaders,
       },
     ]
   },

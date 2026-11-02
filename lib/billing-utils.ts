@@ -24,46 +24,46 @@ export const invoiceStatusConfig: Record<
   }
 > = {
   DRAFT: {
-    label: 'Draft',
+    label: 'Brouillon',
     color: 'text-muted-foreground',
     bgColor: 'bg-muted',
-    description: 'Invoice is being prepared',
+    description: 'Facture en préparation',
   },
   PENDING: {
-    label: 'Pending',
+    label: 'En attente',
     color: 'text-yellow-700',
     bgColor: 'bg-yellow-100',
-    description: 'Invoice sent, awaiting payment',
+    description: 'Facture émise, en attente de règlement',
   },
   PARTIALLY_PAID: {
-    label: 'Partially Paid',
+    label: 'Partiellement réglée',
     color: 'text-blue-700',
     bgColor: 'bg-blue-100',
-    description: 'Partial payment received',
+    description: 'Paiement partiel reçu',
   },
   PAID: {
-    label: 'Paid',
+    label: 'Payée',
     color: 'text-green-700',
     bgColor: 'bg-green-100',
-    description: 'Full payment received',
+    description: 'Paiement intégral reçu',
   },
   OVERDUE: {
-    label: 'Overdue',
+    label: 'En retard',
     color: 'text-red-700',
     bgColor: 'bg-red-100',
-    description: 'Payment past due date',
+    description: 'Échéance dépassée',
   },
   CANCELLED: {
-    label: 'Cancelled',
+    label: 'Annulée',
     color: 'text-muted-foreground',
     bgColor: 'bg-muted',
-    description: 'Invoice has been cancelled',
+    description: 'Facture annulée',
   },
   REFUNDED: {
-    label: 'Refunded',
+    label: 'Remboursée',
     color: 'text-purple-700',
     bgColor: 'bg-purple-100',
-    description: 'Payment has been refunded',
+    description: 'Paiement remboursé',
   },
 }
 
@@ -77,44 +77,44 @@ export const paymentMethodConfig: Record<
   }
 > = {
   CASH: {
-    label: 'Cash',
+    label: 'Espèces',
     icon: 'Banknote',
-    description: 'Cash payment',
+    description: 'Paiement en espèces',
   },
   CARD: {
-    label: 'Card',
+    label: 'Carte',
     icon: 'CreditCard',
-    description: 'Debit/Credit card',
+    description: 'Carte bancaire',
   },
   UPI: {
-    label: 'UPI',
+    label: 'Paiement mobile',
     icon: 'Smartphone',
-    description: 'UPI payment (GPay, PhonePe, etc.)',
+    description: 'Moyen de paiement mobile hérité',
   },
   BANK_TRANSFER: {
-    label: 'Bank Transfer',
+    label: 'Virement bancaire',
     icon: 'Building2',
-    description: 'NEFT/RTGS/IMPS',
+    description: 'Virement bancaire',
   },
   CHEQUE: {
-    label: 'Cheque',
+    label: 'Chèque',
     icon: 'FileText',
-    description: 'Cheque payment',
+    description: 'Paiement par chèque',
   },
   INSURANCE: {
-    label: 'Insurance',
+    label: 'Assurance',
     icon: 'Shield',
-    description: 'Insurance claim payment',
+    description: 'Règlement par assurance',
   },
   WALLET: {
-    label: 'Wallet',
+    label: 'Portefeuille numérique',
     icon: 'Wallet',
-    description: 'Digital wallet',
+    description: 'Portefeuille numérique',
   },
   ONLINE: {
-    label: 'Online',
+    label: 'En ligne',
     icon: 'Globe',
-    description: 'Online payment gateway',
+    description: 'Paiement en ligne (désactivé tant qu’aucune passerelle Maroc n’est configurée)',
   },
 }
 
@@ -128,27 +128,27 @@ export const paymentStatusConfig: Record<
   }
 > = {
   PENDING: {
-    label: 'Pending',
+    label: 'En attente',
     color: 'text-yellow-700',
     bgColor: 'bg-yellow-100',
   },
   COMPLETED: {
-    label: 'Completed',
+    label: 'Terminé',
     color: 'text-green-700',
     bgColor: 'bg-green-100',
   },
   FAILED: {
-    label: 'Failed',
+    label: 'Échoué',
     color: 'text-red-700',
     bgColor: 'bg-red-100',
   },
   REFUNDED: {
-    label: 'Refunded',
+    label: 'Remboursée',
     color: 'text-purple-700',
     bgColor: 'bg-purple-100',
   },
   CANCELLED: {
-    label: 'Cancelled',
+    label: 'Annulée',
     color: 'text-muted-foreground',
     bgColor: 'bg-muted',
   },
@@ -165,46 +165,46 @@ export const insuranceClaimStatusConfig: Record<
   }
 > = {
   DRAFT: {
-    label: 'Draft',
+    label: 'Brouillon',
     color: 'text-muted-foreground',
     bgColor: 'bg-muted',
     description: 'Claim is being prepared',
   },
   SUBMITTED: {
-    label: 'Submitted',
+    label: 'Soumise',
     color: 'text-blue-700',
     bgColor: 'bg-blue-100',
-    description: 'Claim submitted to insurer',
+    description: 'Demande transmise à l’assureur',
   },
   UNDER_REVIEW: {
-    label: 'Under Review',
+    label: 'En cours d’étude',
     color: 'text-yellow-700',
     bgColor: 'bg-yellow-100',
-    description: 'Insurer is reviewing the claim',
+    description: 'Demande en cours d’étude par l’assureur',
   },
   APPROVED: {
-    label: 'Approved',
+    label: 'Approuvée',
     color: 'text-green-700',
     bgColor: 'bg-green-100',
-    description: 'Claim approved by insurer',
+    description: 'Demande approuvée par l’assureur',
   },
   PARTIALLY_APPROVED: {
-    label: 'Partially Approved',
+    label: 'Partiellement approuvée',
     color: 'text-orange-700',
     bgColor: 'bg-orange-100',
-    description: 'Claim partially approved',
+    description: 'Demande partiellement approuvée',
   },
   REJECTED: {
-    label: 'Rejected',
+    label: 'Rejetée',
     color: 'text-red-700',
     bgColor: 'bg-red-100',
-    description: 'Claim rejected by insurer',
+    description: 'Demande rejetée par l’assureur',
   },
   SETTLED: {
-    label: 'Settled',
+    label: 'Réglée',
     color: 'text-emerald-700',
     bgColor: 'bg-emerald-100',
-    description: 'Payment received from insurer',
+    description: 'Règlement reçu de l’assureur',
   },
 }
 
@@ -217,46 +217,36 @@ export const discountTypeConfig: Record<
   }
 > = {
   PERCENTAGE: {
-    label: 'Percentage',
+    label: 'Pourcentage',
     symbol: '%',
   },
   FIXED: {
-    label: 'Fixed Amount',
-    symbol: '₹',
+    label: 'Montant fixe',
+    symbol: 'MAD',
   },
 }
 
-// GST Configuration (Indian Tax)
-export const gstConfig = {
-  cgstRate: 9, // Central GST
-  sgstRate: 9, // State GST
-  igstRate: 18, // Integrated GST (for inter-state)
+// Configuration TVA Maroc.
+// The default rate is configurable; 20% is used only as an application default,
+// not as legal/tax advice for every dental act.
+export const taxConfig = {
+  defaultRate: 20,
   defaultTaxable: true,
 }
 
-// Calculate GST breakdown
-export function calculateGST(
+export function calculateTax(
   subtotal: number,
-  cgstRate: number = gstConfig.cgstRate,
-  sgstRate: number = gstConfig.sgstRate
+  taxRate: number = taxConfig.defaultRate
 ): {
   subtotal: number
-  cgstAmount: number
-  sgstAmount: number
-  totalTax: number
+  taxAmount: number
   grandTotal: number
 } {
-  const cgstAmount = (subtotal * cgstRate) / 100
-  const sgstAmount = (subtotal * sgstRate) / 100
-  const totalTax = cgstAmount + sgstAmount
-  const grandTotal = subtotal + totalTax
-
+  const taxAmount = (subtotal * taxRate) / 100
   return {
     subtotal: Math.round(subtotal * 100) / 100,
-    cgstAmount: Math.round(cgstAmount * 100) / 100,
-    sgstAmount: Math.round(sgstAmount * 100) / 100,
-    totalTax: Math.round(totalTax * 100) / 100,
-    grandTotal: Math.round(grandTotal * 100) / 100,
+    taxAmount: Math.round(taxAmount * 100) / 100,
+    grandTotal: Math.round((subtotal + taxAmount) * 100) / 100,
   }
 }
 
@@ -291,8 +281,7 @@ export function calculateInvoiceTotals(
   items: Array<{ quantity: number; unitPrice: number; taxable: boolean }>,
   discountType: DiscountType = 'FIXED',
   discountValue: number = 0,
-  cgstRate: number = gstConfig.cgstRate,
-  sgstRate: number = gstConfig.sgstRate
+  taxRate: number = taxConfig.defaultRate
 ): {
   subtotal: number
   discountAmount: number
@@ -327,10 +316,11 @@ export function calculateInvoiceTotals(
   const taxableAmount = taxableSubtotal - taxableDiscount
   const nonTaxableAmount = nonTaxableSubtotal - (discountAmount - taxableDiscount)
 
-  // Calculate GST only on taxable amount
-  const cgstAmount = (taxableAmount * cgstRate) / 100
-  const sgstAmount = (taxableAmount * sgstRate) / 100
-  const totalTax = cgstAmount + sgstAmount
+  // TVA on the taxable amount. Legacy fields are preserved temporarily for
+  // database compatibility: cgstAmount stores TVA and sgstAmount stays zero.
+  const cgstAmount = (taxableAmount * taxRate) / 100
+  const sgstAmount = 0
+  const totalTax = cgstAmount
 
   const totalAmount = taxableAmount + nonTaxableAmount + totalTax
 
@@ -464,7 +454,7 @@ export function getPatientName(
     patientId?: string
   } | null
 ): string {
-  if (!patient) return 'Unknown Patient'
+  if (!patient) return 'Patient inconnu'
   return `${patient.firstName} ${patient.lastName}`
 }
 
@@ -494,7 +484,7 @@ export function getDueDays(dueDate: Date | string | null): {
   isOverdue: boolean
   label: string
 } {
-  if (!dueDate) return { days: 0, isOverdue: false, label: 'No due date' }
+  if (!dueDate) return { days: 0, isOverdue: false, label: 'Aucune échéance' }
 
   const due = typeof dueDate === 'string' ? new Date(dueDate) : dueDate
   const today = new Date()
@@ -508,15 +498,15 @@ export function getDueDays(dueDate: Date | string | null): {
     return {
       days: Math.abs(diffDays),
       isOverdue: true,
-      label: `${Math.abs(diffDays)} days overdue`,
+      label: `${Math.abs(diffDays)} jour${Math.abs(diffDays) > 1 ? 's' : ''} de retard`,
     }
   } else if (diffDays === 0) {
-    return { days: 0, isOverdue: false, label: 'Due today' }
+    return { days: 0, isOverdue: false, label: 'Échéance aujourd’hui' }
   } else {
     return {
       days: diffDays,
       isOverdue: false,
-      label: `Due in ${diffDays} days`,
+      label: `Échéance dans ${diffDays} jour${diffDays > 1 ? 's' : ''}`,
     }
   }
 }
@@ -535,12 +525,12 @@ export const paymentMethodIcons = {
 
 // Common payment terms
 export const paymentTermsOptions = [
-  { value: 0, label: 'Due on Receipt' },
-  { value: 7, label: 'Net 7 Days' },
-  { value: 15, label: 'Net 15 Days' },
-  { value: 30, label: 'Net 30 Days' },
-  { value: 45, label: 'Net 45 Days' },
-  { value: 60, label: 'Net 60 Days' },
+  { value: 0, label: 'Paiement immédiat' },
+  { value: 7, label: 'Échéance 7 jours' },
+  { value: 15, label: 'Échéance 15 jours' },
+  { value: 30, label: 'Échéance 30 jours' },
+  { value: 45, label: 'Échéance 45 jours' },
+  { value: 60, label: 'Échéance 60 jours' },
 ]
 
 // Calculate due date from invoice date
@@ -550,108 +540,78 @@ export function calculateDueDate(invoiceDate: Date, paymentTermDays: number): Da
   return dueDate
 }
 
-// Number to words (Indian format) for invoice amounts
+// Montant en toutes lettres pour les factures (dirhams marocains).
 export function numberToWords(num: number): string {
-  if (num === 0) return 'Zero'
+  if (!Number.isFinite(num) || num < 0) return ''
+  const units = ['zéro','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize']
+  const tens: Record<number,string> = {20:'vingt',30:'trente',40:'quarante',50:'cinquante',60:'soixante'}
 
-  const ones = [
-    '',
-    'One',
-    'Two',
-    'Three',
-    'Four',
-    'Five',
-    'Six',
-    'Seven',
-    'Eight',
-    'Nine',
-    'Ten',
-    'Eleven',
-    'Twelve',
-    'Thirteen',
-    'Fourteen',
-    'Fifteen',
-    'Sixteen',
-    'Seventeen',
-    'Eighteen',
-    'Nineteen',
-  ]
-
-  const tens = [
-    '',
-    '',
-    'Twenty',
-    'Thirty',
-    'Forty',
-    'Fifty',
-    'Sixty',
-    'Seventy',
-    'Eighty',
-    'Ninety',
-  ]
-
-  const scales = ['', 'Thousand', 'Lakh', 'Crore']
-
-  function convertGroup(n: number): string {
-    if (n === 0) return ''
-    if (n < 20) return ones[n]
-    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '')
-    return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convertGroup(n % 100) : '')
+  function underHundred(n: number): string {
+    if (n <= 16) return units[n]
+    if (n < 20) return 'dix-' + units[n - 10]
+    if (n < 70) {
+      const ten = Math.floor(n / 10) * 10
+      const rest = n % 10
+      if (!rest) return tens[ten]
+      if (rest === 1) return tens[ten] + ' et un'
+      return tens[ten] + '-' + units[rest]
+    }
+    if (n < 80) {
+      if (n === 71) return 'soixante et onze'
+      return 'soixante-' + underHundred(n - 60)
+    }
+    if (n === 80) return 'quatre-vingts'
+    return 'quatre-vingt-' + underHundred(n - 80)
   }
 
-  // Handle Indian numbering system
-  const rupees = Math.floor(num)
-  const paise = Math.round((num - rupees) * 100)
-
-  let result = ''
-
-  // Crores (10,000,000+)
-  if (rupees >= 10000000) {
-    result += convertGroup(Math.floor(rupees / 10000000)) + ' Crore '
+  function integerWords(n: number): string {
+    if (n < 100) return underHundred(n)
+    if (n < 1000) {
+      const hundreds = Math.floor(n / 100)
+      const rest = n % 100
+      const prefix = hundreds === 1 ? 'cent' : units[hundreds] + ' cent'
+      return rest ? prefix + ' ' + integerWords(rest) : prefix
+    }
+    if (n < 1_000_000) {
+      const thousands = Math.floor(n / 1000)
+      const rest = n % 1000
+      const prefix = thousands === 1 ? 'mille' : integerWords(thousands) + ' mille'
+      return rest ? prefix + ' ' + integerWords(rest) : prefix
+    }
+    if (n < 1_000_000_000) {
+      const millions = Math.floor(n / 1_000_000)
+      const rest = n % 1_000_000
+      const prefix = millions === 1 ? 'un million' : integerWords(millions) + ' millions'
+      return rest ? prefix + ' ' + integerWords(rest) : prefix
+    }
+    const billions = Math.floor(n / 1_000_000_000)
+    const rest = n % 1_000_000_000
+    const prefix = billions === 1 ? 'un milliard' : integerWords(billions) + ' milliards'
+    return rest ? prefix + ' ' + integerWords(rest) : prefix
   }
 
-  // Lakhs (100,000 - 9,999,999)
-  const afterCrore = rupees % 10000000
-  if (afterCrore >= 100000) {
-    result += convertGroup(Math.floor(afterCrore / 100000)) + ' Lakh '
+  const dirhams = Math.floor(num)
+  const centimes = Math.round((num - dirhams) * 100)
+  let result = `${integerWords(dirhams)} dirham${dirhams > 1 ? 's' : ''}`
+  if (centimes > 0) {
+    result += ` et ${integerWords(centimes)} centime${centimes > 1 ? 's' : ''}`
   }
-
-  // Thousands (1,000 - 99,999)
-  const afterLakh = afterCrore % 100000
-  if (afterLakh >= 1000) {
-    result += convertGroup(Math.floor(afterLakh / 1000)) + ' Thousand '
-  }
-
-  // Hundreds and below
-  const afterThousand = afterLakh % 1000
-  if (afterThousand > 0) {
-    result += convertGroup(afterThousand)
-  }
-
-  result = result.trim() + ' Rupees'
-
-  if (paise > 0) {
-    result += ' and ' + convertGroup(paise) + ' Paise'
-  }
-
-  result += ' Only'
-
-  return result.replace(/\s+/g, ' ').trim()
+  return result
 }
 
 // Report date range presets
 export const dateRangePresets = [
-  { label: 'Today', value: 'today' },
-  { label: 'Yesterday', value: 'yesterday' },
-  { label: 'This Week', value: 'this_week' },
-  { label: 'Last Week', value: 'last_week' },
-  { label: 'This Month', value: 'this_month' },
-  { label: 'Last Month', value: 'last_month' },
-  { label: 'This Quarter', value: 'this_quarter' },
-  { label: 'Last Quarter', value: 'last_quarter' },
-  { label: 'This Year', value: 'this_year' },
-  { label: 'Last Year', value: 'last_year' },
-  { label: 'Custom Range', value: 'custom' },
+  { label: 'Aujourd’hui', value: 'today' },
+  { label: 'Hier', value: 'yesterday' },
+  { label: 'Cette semaine', value: 'this_week' },
+  { label: 'Semaine dernière', value: 'last_week' },
+  { label: 'Ce mois-ci', value: 'this_month' },
+  { label: 'Mois dernier', value: 'last_month' },
+  { label: 'Ce trimestre', value: 'this_quarter' },
+  { label: 'Trimestre dernier', value: 'last_quarter' },
+  { label: 'Cette année', value: 'this_year' },
+  { label: 'Année dernière', value: 'last_year' },
+  { label: 'Période personnalisée', value: 'custom' },
 ]
 
 // Get date range from preset

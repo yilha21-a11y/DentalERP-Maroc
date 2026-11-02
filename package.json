@@ -1,33 +1,30 @@
 {
-  "name": "dental-erp",
+  "name": "dentalerp-maroc",
   "version": "1.0.0",
-  "description": "Open-source dental hospital management system for Indian dental clinics — AI-powered, GST billing, patient portal, tele-dentistry",
+  "description": "Solution open source de gestion de cabinet dentaire adaptée au Maroc — patients, rendez-vous, facturation en MAD, stock, laboratoire et communications.",
   "private": true,
   "keywords": [
-    "dental-software",
-    "hospital-management-system",
+    "logiciel-dentaire-maroc",
+    "gestion-cabinet-dentaire",
     "dental-erp",
     "dental-clinic",
     "nextjs",
     "prisma",
-    "india",
-    "gst-billing",
+    "maroc",
+    "mad",
     "patient-management",
     "appointment-scheduling",
-    "open-source",
-    "ai-powered",
-    "tele-dentistry",
-    "dental-practice-management"
+    "open-source"
   ],
   "author": "Abinauv Selvaraj",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/abinauv/dental-erp.git"
+    "url": "https://github.com/yilha21-a11y/DentalERP-Maroc.git"
   },
-  "homepage": "https://github.com/abinauv/dental-erp",
+  "homepage": "https://github.com/yilha21-a11y/DentalERP-Maroc",
   "bugs": {
-    "url": "https://github.com/abinauv/dental-erp/issues"
+    "url": "https://github.com/yilha21-a11y/DentalERP-Maroc/issues"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -131,5 +128,8 @@
     "typescript": "^5.9.3",
     "vitest": "^2.1.8",
     "vitest-axe": "^0.1.0"
-  }
+  },
+  "contributors": [
+    "DentalERP Maroc maintainers"
+  ]
 }

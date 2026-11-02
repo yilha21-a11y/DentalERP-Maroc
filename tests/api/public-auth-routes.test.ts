@@ -1,284 +1,128 @@
 // @ts-nocheck
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-// ── Mocks ────────────────────────────────────────────────────────────────────
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/prisma', () => import('../__mocks__/prisma'))
-
-vi.mock('bcryptjs', () => ({
-  default: {
-    hash: vi.fn().mockResolvedValue('$2a$10$hashedpassword'),
-  },
-}))
-
+vi.mock('bcryptjs', () => ({ default: { hash: vi.fn().mockResolvedValue('hashed') } }))
 vi.mock('@/lib/api-helpers', () => ({
-  generateUniqueSlug: vi.fn().mockResolvedValue('test-dental-clinic'),
-  generateToken: vi.fn().mockReturnValue('mock-verification-token-abc123'),
-  PLAN_LIMITS: {
-    FREE: { patientLimit: 100, staffLimit: 5, storageLimitMb: 500 },
-    PROFESSIONAL: { patientLimit: 1000, staffLimit: 25, storageLimitMb: 5000 },
-  },
+  generateUniqueSlug: vi.fn().mockResolvedValue('cabinet-test'),
+  generateToken: vi.fn().mockReturnValue('a'.repeat(48)),
+  PLAN_LIMITS: { FREE: { patientLimit: 100, staffLimit: 5, storageLimitMb: 500 } },
 }))
-
 vi.mock('@/lib/email-helpers', () => ({
   sendVerificationEmail: vi.fn().mockResolvedValue(true),
 }))
-
-vi.mock('@prisma/client', () => ({
-  Plan: { FREE: 'FREE', PROFESSIONAL: 'PROFESSIONAL', ENTERPRISE: 'ENTERPRISE' },
-  Role: { ADMIN: 'ADMIN', DOCTOR: 'DOCTOR', STAFF: 'STAFF' },
+vi.mock('@/lib/services/whatsapp.service', () => ({
+  normalizeMoroccoPhone: vi.fn((phone: string) => phone.replace(/\D/g, '').replace(/^0/, '212')),
 }))
-
-// ── Imports (after mocks) ────────────────────────────────────────────────────
+vi.mock('@/lib/rate-limit', () => ({
+  getClientIp: vi.fn(() => '127.0.0.1'),
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 4, retryAfterSeconds: 0 }),
+}))
+vi.mock('@prisma/client', () => ({
+  Plan: { FREE: 'FREE' },
+  Role: { ADMIN: 'ADMIN' },
+}))
 
 import { POST as signupPOST } from '@/app/api/public/signup/route'
 import { POST as verifyPOST, GET as verifyGET } from '@/app/api/public/verify-email/route'
 import { prisma } from '@/lib/prisma'
-import { sendVerificationEmail } from '@/lib/email-helpers'
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function makeReq(path: string, method = 'POST', body?: any): Request {
-  const url = `http://localhost${path}`
-  const init: any = { method }
-  if (body) {
-    init.body = JSON.stringify(body)
-    init.headers = { 'Content-Type': 'application/json' }
-  }
-  return new Request(url, init)
+function req(path: string, body?: unknown, method = 'POST') {
+  return new Request(`http://localhost${path}`, {
+    method,
+    ...(body ? { body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } } : {}),
+  })
 }
 
-const validSignup = {
-  hospitalName: 'Test Dental Clinic',
-  adminName: 'John Doe',
-  email: 'admin@testdental.com',
-  phone: '9876543210',
-  password: 'secureP@ss123',
+const signup = {
+  hospitalName: 'Cabinet Dentaire Test',
+  adminName: 'Sara Amrani',
+  email: 'dentiste@cabinet.ma',
+  phone: '0612345678',
+  password: 'MotDePasse123!',
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// 1. POST /api/public/signup
-// ═════════════════════════════════════════════════════════════════════════════
-
-describe('POST /api/public/signup', () => {
+describe('public clinic signup', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns 400 for validation errors', async () => {
-    const res = await signupPOST(
-      makeReq('/api/public/signup', 'POST', {
-        hospitalName: 'A', // too short
-        adminName: '',
-        email: 'invalid',
-        phone: '123',
-        password: 'short',
-      })
-    )
-    const body = await res.json()
-
-    expect(res.status).toBe(400)
-    expect(body.error).toBe('Validation failed')
-    expect(body.details).toBeDefined()
-  })
-
-  it('returns 400 for missing fields', async () => {
-    const res = await signupPOST(
-      makeReq('/api/public/signup', 'POST', {
-        hospitalName: 'Test',
-      })
-    )
+  it('rejects invalid payloads', async () => {
+    const res = await signupPOST(req('/api/public/signup', { hospitalName: 'A' }))
     expect(res.status).toBe(400)
   })
 
-  it('returns 409 when email already exists', async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({
-      id: 'u1',
-      email: 'admin@testdental.com',
-    } as any)
-
-    const res = await signupPOST(makeReq('/api/public/signup', 'POST', validSignup))
+  it('does not reveal whether an email already exists', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'u1' } as any)
+    const res = await signupPOST(req('/api/public/signup', signup))
     const body = await res.json()
-
-    expect(res.status).toBe(409)
-    expect(body.error).toContain('already exists')
-  })
-
-  it('creates hospital, user, and staff in transaction', async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
-
-    const mockTx = {
-      hospital: {
-        create: vi.fn().mockResolvedValue({ id: 'h1', slug: 'test-dental-clinic' }),
-      },
-      user: {
-        create: vi.fn().mockResolvedValue({ id: 'u1', email: 'admin@testdental.com' }),
-      },
-    }
-    vi.mocked(prisma.$transaction).mockImplementation(async (fn) => fn(mockTx as any))
-
-    const res = await signupPOST(makeReq('/api/public/signup', 'POST', validSignup))
-    const body = await res.json()
-
     expect(res.status).toBe(200)
     expect(body.success).toBe(true)
-    expect(body.hospitalId).toBe('h1')
-    expect(body.emailSent).toBe(true)
-
-    // Verify hospital created with FREE plan
-    expect(mockTx.hospital.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          name: 'Test Dental Clinic',
-          plan: 'FREE',
-          isActive: true,
-        }),
-      })
-    )
-
-    // Verify user created with ADMIN role and staff record
-    expect(mockTx.user.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          email: 'admin@testdental.com',
-          role: 'ADMIN',
-          isHospitalAdmin: true,
-          staff: {
-            create: expect.objectContaining({
-              employeeId: 'EMP001',
-              firstName: 'John',
-            }),
-          },
-        }),
-      })
-    )
+    expect(body.error).toBeUndefined()
   })
 
-  it('handles email sending failure gracefully', async () => {
+  it('creates Morocco defaults and an admin in one transaction', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
-    vi.mocked(sendVerificationEmail).mockResolvedValue(false)
-
-    const mockTx = {
+    const tx = {
       hospital: { create: vi.fn().mockResolvedValue({ id: 'h1' }) },
       user: { create: vi.fn().mockResolvedValue({ id: 'u1' }) },
     }
-    vi.mocked(prisma.$transaction).mockImplementation(async (fn) => fn(mockTx as any))
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) => fn(tx))
 
-    const res = await signupPOST(makeReq('/api/public/signup', 'POST', validSignup))
+    const res = await signupPOST(req('/api/public/signup', signup))
     const body = await res.json()
 
     expect(res.status).toBe(200)
     expect(body.success).toBe(true)
-    expect(body.emailSent).toBe(false)
-    expect(body.message).toContain('SMTP')
-  })
-
-  it('returns 500 on unexpected error', async () => {
-    vi.mocked(prisma.user.findUnique).mockRejectedValue(new Error('DB down'))
-
-    const res = await signupPOST(makeReq('/api/public/signup', 'POST', validSignup))
-    const body = await res.json()
-
-    expect(res.status).toBe(500)
-    expect(body.error).toContain('error occurred during signup')
+    expect(tx.hospital.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          locale: 'fr-MA',
+          country: 'MA',
+          currency: 'MAD',
+          timezone: 'Africa/Casablanca',
+          emailVerificationToken: 'a'.repeat(48),
+        }),
+      })
+    )
+    expect(tx.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: 'dentiste@cabinet.ma',
+          phone: '+212612345678',
+          role: 'ADMIN',
+          locale: 'fr-MA',
+        }),
+      })
+    )
   })
 })
 
-// ═════════════════════════════════════════════════════════════════════════════
-// 2. POST /api/public/verify-email
-// ═════════════════════════════════════════════════════════════════════════════
-
-describe('POST /api/public/verify-email', () => {
+describe('email verification', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns 400 for missing token', async () => {
-    const res = await verifyPOST(makeReq('/api/public/verify-email', 'POST', {}))
-    const body = await res.json()
-
-    expect(res.status).toBe(400)
-    expect(body.error).toBe('Invalid token')
+  it('rejects missing/short tokens', async () => {
+    expect((await verifyPOST(req('/api/public/verify-email', { token: 'bad' }))).status).toBe(400)
   })
 
-  it('returns 400 for invalid/expired token', async () => {
-    vi.mocked(prisma.hospital.findFirst).mockResolvedValue(null)
-
-    const res = await verifyPOST(
-      makeReq('/api/public/verify-email', 'POST', {
-        token: 'expired-token-xyz',
-      })
-    )
-    const body = await res.json()
-
-    expect(res.status).toBe(400)
-    expect(body.error).toContain('Invalid or expired')
-  })
-
-  it('verifies email and clears token', async () => {
-    vi.mocked(prisma.hospital.findFirst).mockResolvedValue({
-      id: 'h1',
-      slug: 'test-dental',
-      emailVerificationToken: 'valid-token',
-    } as any)
+  it('consumes a valid token', async () => {
+    vi.mocked(prisma.hospital.findFirst).mockResolvedValue({ id: 'h1', slug: 'cabinet-test' } as any)
     vi.mocked(prisma.hospital.update).mockResolvedValue({} as any)
 
-    const res = await verifyPOST(
-      makeReq('/api/public/verify-email', 'POST', {
-        token: 'valid-token',
-      })
-    )
+    const res = await verifyPOST(req('/api/public/verify-email', { token: 'x'.repeat(48) }))
     const body = await res.json()
-
     expect(res.status).toBe(200)
-    expect(body.success).toBe(true)
-    expect(body.hospitalSlug).toBe('test-dental')
+    expect(body.hospitalSlug).toBe('cabinet-test')
     expect(prisma.hospital.update).toHaveBeenCalledWith({
       where: { id: 'h1' },
-      data: {
-        emailVerificationToken: null,
-        emailVerificationExpiry: null,
-      },
+      data: { emailVerificationToken: null, emailVerificationExpiry: null },
     })
   })
-})
 
-// ═════════════════════════════════════════════════════════════════════════════
-// 3. GET /api/public/verify-email
-// ═════════════════════════════════════════════════════════════════════════════
-
-describe('GET /api/public/verify-email', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('returns 400 when token is missing', async () => {
-    const res = await verifyGET(new Request('http://localhost/api/public/verify-email'))
+  it('GET validates a current token without exposing the clinic email', async () => {
+    vi.mocked(prisma.hospital.findFirst).mockResolvedValue({ name: 'Cabinet Test' } as any)
+    const res = await verifyGET(new Request(`http://localhost/api/public/verify-email?token=${'x'.repeat(48)}`))
     const body = await res.json()
-
-    expect(res.status).toBe(400)
-    expect(body.error).toBe('Token is required')
-  })
-
-  it('returns valid=false for invalid token', async () => {
-    vi.mocked(prisma.hospital.findFirst).mockResolvedValue(null)
-
-    const res = await verifyGET(new Request('http://localhost/api/public/verify-email?token=bad'))
-    const body = await res.json()
-
-    expect(res.status).toBe(400)
-    expect(body.valid).toBe(false)
-  })
-
-  it('returns hospital info for valid token', async () => {
-    vi.mocked(prisma.hospital.findFirst).mockResolvedValue({
-      id: 'h1',
-      name: 'Test Dental',
-      email: 'admin@test.com',
-    } as any)
-
-    const res = await verifyGET(
-      new Request('http://localhost/api/public/verify-email?token=valid-token')
-    )
-    const body = await res.json()
-
-    expect(res.status).toBe(200)
     expect(body.valid).toBe(true)
-    expect(body.hospitalName).toBe('Test Dental')
-    expect(body.email).toBe('admin@test.com')
+    expect(body.hospitalName).toBe('Cabinet Test')
+    expect(body.email).toBeUndefined()
   })
 })

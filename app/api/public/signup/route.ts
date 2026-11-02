@@ -5,60 +5,72 @@ import { prisma } from '@/lib/prisma'
 import { generateUniqueSlug, generateToken, PLAN_LIMITS } from '@/lib/api-helpers'
 import { Plan, Role } from '@prisma/client'
 import { sendVerificationEmail } from '@/lib/email-helpers'
+import { normalizeMoroccoPhone } from '@/lib/services/whatsapp.service'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 const signupSchema = z.object({
-  hospitalName: z.string().min(2, 'Hospital name must be at least 2 characters'),
-  adminName: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email address'),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  hospitalName: z.string().trim().min(2).max(150),
+  adminName: z.string().trim().min(2).max(150),
+  email: z.string().trim().email().max(254),
+  phone: z.string().trim().min(8).max(30),
+  password: z.string().min(8).max(200),
 })
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const validated = signupSchema.safeParse(body)
-
+    const validated = signupSchema.safeParse(await request.json())
     if (!validated.success) {
+      return NextResponse.json({ error: 'Données d’inscription invalides' }, { status: 400 })
+    }
+
+    const hospitalName = validated.data.hospitalName
+    const adminName = validated.data.adminName
+    const email = validated.data.email.toLowerCase()
+    const phone = `+${normalizeMoroccoPhone(validated.data.phone)}`
+    const password = validated.data.password
+
+    const rate = await checkRateLimit(
+      `signup:${getClientIp(request)}:${email}`,
+      5,
+      60 * 60 * 1000
+    )
+    if (!rate.allowed) {
       return NextResponse.json(
-        { error: 'Validation failed', details: validated.error.flatten() },
-        { status: 400 }
+        { error: 'Trop de demandes. Réessayez plus tard.' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } }
       )
     }
 
-    const { hospitalName, adminName, email, phone, password } = validated.data
-
-    // Check if email already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
+      select: { id: true },
     })
 
+    // Neutral response prevents account enumeration.
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'An account with this email already exists' },
-        { status: 409 }
-      )
+      return NextResponse.json({
+        success: true,
+        message:
+          'Si cette adresse peut être utilisée, un e-mail de vérification sera envoyé.',
+      })
     }
 
-    // Generate unique slug for the hospital
     const slug = await generateUniqueSlug(hospitalName)
+    const hashedPassword = await bcrypt.hash(password, 12)
+    const verificationToken = generateToken(48)
+    const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
-
-    // Generate email verification token
-    const verificationToken = generateToken(32)
-    const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-
-    // Create hospital and admin user in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create the hospital with FREE plan limits
       const hospital = await tx.hospital.create({
         data: {
           name: hospitalName,
           slug,
           email,
           phone,
+          locale: 'fr-MA',
+          country: 'MA',
+          currency: 'MAD',
+          timezone: 'Africa/Casablanca',
           plan: Plan.FREE,
           isActive: true,
           onboardingCompleted: false,
@@ -70,8 +82,8 @@ export async function POST(request: Request) {
         },
       })
 
-      // Create the admin user
-      const user = await tx.user.create({
+      const nameParts = adminName.split(/\s+/).filter(Boolean)
+      await tx.user.create({
         data: {
           email,
           name: adminName,
@@ -81,11 +93,12 @@ export async function POST(request: Request) {
           isActive: true,
           isHospitalAdmin: true,
           hospitalId: hospital.id,
+          locale: 'fr-MA',
           staff: {
             create: {
-              employeeId: 'EMP001',
-              firstName: adminName.split(' ')[0],
-              lastName: adminName.split(' ').slice(1).join(' ') || '',
+              employeeId: `EMP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+              firstName: nameParts[0] || adminName,
+              lastName: nameParts.slice(1).join(' '),
               email,
               phone,
               hospitalId: hospital.id,
@@ -94,10 +107,9 @@ export async function POST(request: Request) {
         },
       })
 
-      return { hospital, user }
+      return { hospitalId: hospital.id }
     })
 
-    // Send verification email (non-blocking — logs error if SMTP not configured)
     const emailSent = await sendVerificationEmail({
       to: email,
       userName: adminName,
@@ -108,17 +120,19 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: emailSent
-        ? 'Account created successfully. Please check your email to verify your account.'
-        : 'Account created successfully. Email verification pending — please configure SMTP settings.',
-      hospitalId: result.hospital.id,
+        ? 'Compte créé. Consultez votre e-mail pour vérifier votre adresse.'
+        : 'Compte créé, mais l’e-mail de vérification n’a pas pu être envoyé. Vous pourrez demander un nouvel envoi.',
+      hospitalId: result.hospitalId,
       emailSent,
-      // Development-only: show token for testing
-      ...(process.env.NODE_ENV === 'development' && { verificationToken }),
+      ...(process.env.NODE_ENV === 'development' &&
+        process.env.EXPOSE_DEV_VERIFICATION_TOKEN === 'true' && {
+          verificationToken,
+        }),
     })
   } catch (error) {
     console.error('Signup error:', error)
     return NextResponse.json(
-      { error: 'An error occurred during signup. Please try again.' },
+      { error: 'Impossible de créer le compte pour le moment' },
       { status: 500 }
     )
   }

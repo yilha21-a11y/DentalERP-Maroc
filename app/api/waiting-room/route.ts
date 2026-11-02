@@ -1,82 +1,182 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
+import { Prisma, WaitingRoomStatus } from '@prisma/client'
+import { z } from 'zod'
 import prisma from '@/lib/prisma'
 import { requireAuthAndRole } from '@/lib/api-helpers'
+import { verifyWaitingRoomDisplayToken } from '@/lib/waiting-room-display-token'
 
-export async function GET(req: NextRequest) {
-  const url = new URL(req.url)
-  const displayToken = url.searchParams.get('token')
-  const isDisplay = Boolean(
-    displayToken &&
-    process.env.WAITING_ROOM_DISPLAY_TOKEN &&
-    displayToken === process.env.WAITING_ROOM_DISPLAY_TOKEN &&
-    process.env.WAITING_ROOM_HOSPITAL_ID
-  )
+const createSchema = z.object({
+  appointmentId: z.string().min(1),
+})
 
-  let hospitalId: string | null = null
-  if (isDisplay) {
-    hospitalId = process.env.WAITING_ROOM_HOSPITAL_ID || null
-  } else {
-    const authResult = await requireAuthAndRole()
-    if (authResult.error || !authResult.hospitalId) {
-      return authResult.error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+const updateSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(['WAITING', 'CALLED', 'IN_CONSULTATION', 'COMPLETED', 'CANCELLED']),
+  roomLabel: z.string().trim().max(100).nullable().optional(),
+})
+
+async function resolveHospitalId(req: NextRequest): Promise<
+  | { hospitalId: string; response?: never }
+  | { hospitalId?: never; response: NextResponse }
+> {
+  const token = new URL(req.url).searchParams.get('token')
+
+  if (token) {
+    const payload = await verifyWaitingRoomDisplayToken(token)
+    if (!payload) {
+      return {
+        response: NextResponse.json({ error: 'Jeton d’affichage invalide ou expiré' }, { status: 401 }),
+      }
     }
-    hospitalId = authResult.hospitalId
+    return { hospitalId: payload.hospitalId }
   }
 
-  const rows = await prisma.$queryRawUnsafe<any[]>(`
-    SELECT w.id, w.status, w.roomLabel, w.arrivedAt, w.calledAt,
-           a.id appointmentId, a.scheduledTime,
-           p.firstName, LEFT(p.lastName,1) lastInitial,
-           s.firstName doctorFirstName, s.lastName doctorLastName
-    FROM WaitingRoomEntry w
-    JOIN Appointment a ON a.id = w.appointmentId
-    JOIN Patient p ON p.id = a.patientId
-    JOIN Staff s ON s.id = a.doctorId
-    WHERE w.hospitalId = ? AND w.status <> 'CANCELLED'
-      AND DATE(w.arrivedAt) = CURRENT_DATE()
-    ORDER BY FIELD(w.status,'CALLED','IN_CONSULTATION','WAITING','COMPLETED'), w.arrivedAt ASC
-  `, hospitalId)
+  const authResult = await requireAuthAndRole()
+  if (authResult.error || !authResult.hospitalId) {
+    return {
+      response:
+        authResult.error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 }),
+    }
+  }
+  return { hospitalId: authResult.hospitalId }
+}
 
-  return NextResponse.json({ success: true, data: rows })
+export async function GET(req: NextRequest) {
+  const resolved = await resolveHospitalId(req)
+  if (resolved.response) return resolved.response
+
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+
+  const entries = await prisma.waitingRoomEntry.findMany({
+    where: {
+      hospitalId: resolved.hospitalId,
+      status: { not: 'CANCELLED' },
+      arrivedAt: { gte: start, lt: end },
+    },
+    include: {
+      appointment: {
+        select: {
+          id: true,
+          scheduledTime: true,
+          patient: {
+            select: { firstName: true, lastName: true },
+          },
+          doctor: {
+            select: { firstName: true, lastName: true },
+          },
+        },
+      },
+    },
+    orderBy: { arrivedAt: 'asc' },
+  })
+
+  const priority: Record<WaitingRoomStatus, number> = {
+    CALLED: 0,
+    IN_CONSULTATION: 1,
+    WAITING: 2,
+    COMPLETED: 3,
+    CANCELLED: 4,
+  }
+
+  const data = entries
+    .sort((a, b) => priority[a.status] - priority[b.status] || a.arrivedAt.getTime() - b.arrivedAt.getTime())
+    .map((entry) => ({
+      id: entry.id,
+      status: entry.status,
+      roomLabel: entry.roomLabel,
+      arrivedAt: entry.arrivedAt,
+      calledAt: entry.calledAt,
+      appointmentId: entry.appointment.id,
+      scheduledTime: entry.appointment.scheduledTime,
+      firstName: entry.appointment.patient.firstName,
+      lastInitial: entry.appointment.patient.lastName.slice(0, 1),
+      doctorFirstName: entry.appointment.doctor.firstName,
+      doctorLastName: entry.appointment.doctor.lastName,
+    }))
+
+  return NextResponse.json({ success: true, data })
 }
 
 export async function POST(req: NextRequest) {
   const { error, hospitalId } = await requireAuthAndRole(['ADMIN', 'RECEPTIONIST', 'DOCTOR'])
-  if (error || !hospitalId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  if (error || !hospitalId) {
+    return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
 
-  const body = await req.json()
-  const appointmentId = String(body.appointmentId || '')
-  if (!appointmentId) return NextResponse.json({ error: 'appointmentId requis' }, { status: 400 })
+  const parsed = createSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Rendez-vous invalide' }, { status: 400 })
+  }
 
-  const appointment = await prisma.appointment.findFirst({ where: { id: appointmentId, hospitalId } })
-  if (!appointment) return NextResponse.json({ error: 'Rendez-vous introuvable' }, { status: 404 })
+  const appointment = await prisma.appointment.findFirst({
+    where: { id: parsed.data.appointmentId, hospitalId },
+    select: { id: true },
+  })
+  if (!appointment) {
+    return NextResponse.json({ error: 'Rendez-vous introuvable' }, { status: 404 })
+  }
 
-  const id = randomUUID()
-  await prisma.$executeRawUnsafe(`
-    INSERT INTO WaitingRoomEntry (id,hospitalId,appointmentId,status,arrivedAt,updatedAt)
-    VALUES (?,?,?,'WAITING',NOW(3),NOW(3))
-    ON DUPLICATE KEY UPDATE status='WAITING', arrivedAt=NOW(3), updatedAt=NOW(3)
-  `, id, hospitalId, appointmentId)
+  const now = new Date()
+  await prisma.$transaction([
+    prisma.waitingRoomEntry.upsert({
+      where: { appointmentId: appointment.id },
+      create: {
+        hospitalId,
+        appointmentId: appointment.id,
+        status: 'WAITING',
+        arrivedAt: now,
+      },
+      update: {
+        hospitalId,
+        status: 'WAITING',
+        roomLabel: null,
+        arrivedAt: now,
+        calledAt: null,
+        startedAt: null,
+        completedAt: null,
+      },
+    }),
+    prisma.appointment.update({
+      where: { id: appointment.id },
+      data: { status: 'CHECKED_IN', checkedInAt: now },
+    }),
+  ])
 
-  await prisma.appointment.update({ where: { id: appointmentId }, data: { status: 'CHECKED_IN', checkedInAt: new Date() } })
   return NextResponse.json({ success: true })
 }
 
 export async function PATCH(req: NextRequest) {
   const { error, hospitalId } = await requireAuthAndRole(['ADMIN', 'RECEPTIONIST', 'DOCTOR'])
-  if (error || !hospitalId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
-  const body = await req.json()
-  const id = String(body.id || '')
-  const status = String(body.status || '')
-  const roomLabel = body.roomLabel ? String(body.roomLabel) : null
-  const allowed = ['WAITING','CALLED','IN_CONSULTATION','COMPLETED','CANCELLED']
-  if (!id || !allowed.includes(status)) return NextResponse.json({ error: 'Données invalides' }, { status: 400 })
-
-  const timestampColumn: Record<string,string> = {
-    CALLED: 'calledAt=NOW(3),', IN_CONSULTATION: 'startedAt=NOW(3),', COMPLETED: 'completedAt=NOW(3),'
+  if (error || !hospitalId) {
+    return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
-  await prisma.$executeRawUnsafe(`UPDATE WaitingRoomEntry SET status=?, roomLabel=?, ${timestampColumn[status] || ''} updatedAt=NOW(3) WHERE id=? AND hospitalId=?`, status, roomLabel, id, hospitalId)
+
+  const parsed = updateSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Données invalides' }, { status: 400 })
+  }
+
+  const now = new Date()
+  const data: Prisma.WaitingRoomEntryUpdateManyMutationInput = {
+    status: parsed.data.status as WaitingRoomStatus,
+    roomLabel: parsed.data.roomLabel ?? null,
+  }
+
+  if (parsed.data.status === 'CALLED') data.calledAt = now
+  if (parsed.data.status === 'IN_CONSULTATION') data.startedAt = now
+  if (parsed.data.status === 'COMPLETED') data.completedAt = now
+
+  const result = await prisma.waitingRoomEntry.updateMany({
+    where: { id: parsed.data.id, hospitalId },
+    data,
+  })
+
+  if (result.count !== 1) {
+    return NextResponse.json({ error: 'Entrée introuvable' }, { status: 404 })
+  }
+
   return NextResponse.json({ success: true })
 }

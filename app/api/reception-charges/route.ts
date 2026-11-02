@@ -1,61 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
+import { Prisma } from '@prisma/client'
+import { z } from 'zod'
 import prisma from '@/lib/prisma'
 import { requireAuthAndRole } from '@/lib/api-helpers'
 import { hasPermission } from '@/lib/permissions'
 
-export async function GET() {
-  const { error, hospitalId } = await requireAuthAndRole(['ADMIN','ACCOUNTANT','RECEPTIONIST','DOCTOR'])
-  if (error || !hospitalId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+const createSchema = z.object({
+  patientId: z.string().min(1),
+  treatmentId: z.string().min(1).nullable().optional(),
+  doctorId: z.string().min(1).optional(),
+  amount: z.coerce.number().positive().max(10000000),
+  notes: z.string().trim().max(4000).nullable().optional(),
+})
 
-  const rows = await prisma.$queryRawUnsafe<any[]>(`
-    SELECT rc.*, CONCAT(p.firstName,' ',p.lastName) patientName,
-           CONCAT(s.firstName,' ',s.lastName) doctorName,
-           (SELECT rp.method FROM ReceptionPayment rp WHERE rp.chargeId=rc.id ORDER BY rp.createdAt DESC LIMIT 1) lastPaymentMethod
-    FROM ReceptionCharge rc
-    JOIN Patient p ON p.id=rc.patientId
-    JOIN Staff s ON s.id=rc.doctorId
-    WHERE rc.hospitalId=?
-    ORDER BY FIELD(rc.status,'PENDING','PARTIAL','PAID','CANCELLED'), rc.sentAt DESC
-  `, hospitalId)
-  return NextResponse.json({ success: true, currency: 'MAD', data: rows })
+const paymentSchema = z.object({
+  id: z.string().min(1),
+  payment: z.coerce.number().min(0).max(10000000).default(0),
+  discount: z.coerce.number().min(0).max(10000000).default(0),
+  method: z.enum(['CASH', 'CARD', 'BANK_TRANSFER', 'CHEQUE', 'OTHER']).default('CASH'),
+  reference: z.string().trim().max(191).nullable().optional(),
+})
+
+export async function GET() {
+  const { error, hospitalId } = await requireAuthAndRole([
+    'ADMIN',
+    'ACCOUNTANT',
+    'RECEPTIONIST',
+    'DOCTOR',
+  ])
+  if (error || !hospitalId) {
+    return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
+
+  const charges = await prisma.receptionCharge.findMany({
+    where: { hospitalId },
+    include: {
+      patient: { select: { firstName: true, lastName: true } },
+      doctor: { select: { firstName: true, lastName: true } },
+      payments: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { method: true },
+      },
+    },
+    orderBy: { sentAt: 'desc' },
+  })
+
+  const priority = { PENDING: 0, PARTIAL: 1, PAID: 2, CANCELLED: 3 } as const
+  const data = charges
+    .sort((a, b) => priority[a.status] - priority[b.status] || b.sentAt.getTime() - a.sentAt.getTime())
+    .map((charge) => ({
+      ...charge,
+      patientName: `${charge.patient.firstName} ${charge.patient.lastName}`,
+      doctorName: `${charge.doctor.firstName} ${charge.doctor.lastName}`,
+      lastPaymentMethod: charge.payments[0]?.method || null,
+      patient: undefined,
+      doctor: undefined,
+      payments: undefined,
+    }))
+
+  return NextResponse.json({ success: true, currency: 'MAD', data })
 }
 
 export async function POST(req: NextRequest) {
-  const { error, hospitalId, user } = await requireAuthAndRole(['ADMIN','DOCTOR'])
-  if (error || !hospitalId || !user?.id) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const { error, hospitalId, user } = await requireAuthAndRole(['ADMIN', 'DOCTOR'])
+  if (error || !hospitalId || !user?.id) {
+    return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
 
-  const body = await req.json()
-  const patientId = String(body.patientId || '')
-  const treatmentId = body.treatmentId ? String(body.treatmentId) : null
-  let doctorId = String(body.doctorId || '')
-  const numericAmount = Number(body.amount)
-  const notes = body.notes ? String(body.notes) : null
-
-  if (!patientId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+  const parsed = createSchema.safeParse(await req.json())
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Données incomplètes ou montant invalide' }, { status: 400 })
   }
 
+  const { patientId, treatmentId, amount, notes } = parsed.data
+  let doctorId = parsed.data.doctorId || ''
+
   const patient = await prisma.patient.findFirst({
-    where: { id: patientId, hospitalId },
+    where: { id: patientId, hospitalId, isActive: true },
     select: { id: true },
   })
-  if (!patient) return NextResponse.json({ error: 'Patient introuvable dans ce cabinet' }, { status: 404 })
+  if (!patient) {
+    return NextResponse.json({ error: 'Patient introuvable dans ce cabinet' }, { status: 404 })
+  }
 
   if (user.role === 'DOCTOR') {
     const ownStaff = await prisma.staff.findFirst({
       where: { hospitalId, userId: user.id, isActive: true },
       select: { id: true },
     })
-    if (!ownStaff) return NextResponse.json({ error: 'Profil dentiste introuvable' }, { status: 403 })
+    if (!ownStaff) {
+      return NextResponse.json({ error: 'Profil dentiste introuvable' }, { status: 403 })
+    }
     doctorId = ownStaff.id
   } else {
-    if (!doctorId) return NextResponse.json({ error: 'Dentiste requis' }, { status: 400 })
+    if (!doctorId) {
+      return NextResponse.json({ error: 'Dentiste requis' }, { status: 400 })
+    }
     const doctor = await prisma.staff.findFirst({
       where: { id: doctorId, hospitalId, isActive: true },
       select: { id: true },
     })
-    if (!doctor) return NextResponse.json({ error: 'Dentiste introuvable dans ce cabinet' }, { status: 404 })
+    if (!doctor) {
+      return NextResponse.json({ error: 'Dentiste introuvable dans ce cabinet' }, { status: 404 })
+    }
   }
 
   if (treatmentId) {
@@ -64,76 +112,137 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     })
     if (!treatment) {
-      return NextResponse.json({ error: 'Traitement incompatible avec ce patient ou ce dentiste' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Traitement incompatible avec ce patient ou ce dentiste' },
+        { status: 400 }
+      )
     }
   }
 
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO ReceptionCharge (id,hospitalId,patientId,treatmentId,doctorId,amount,discount,amountPaid,status,notes,sentAt,createdAt,updatedAt)
-     VALUES (?,?,?,?,?,?,0,0,'PENDING',?,NOW(3),NOW(3),NOW(3))`,
-    randomUUID(), hospitalId, patientId, treatmentId, doctorId, numericAmount, notes
-  )
+  await prisma.receptionCharge.create({
+    data: {
+      hospitalId,
+      patientId,
+      treatmentId: treatmentId || null,
+      doctorId,
+      amount,
+      notes: notes || null,
+      status: 'PENDING',
+    },
+  })
+
   return NextResponse.json({ success: true })
 }
 
 export async function PATCH(req: NextRequest) {
-  const { error, hospitalId, user } = await requireAuthAndRole(['ADMIN','ACCOUNTANT','RECEPTIONIST'])
-  if (error || !hospitalId || !user?.id) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const { error, hospitalId, user } = await requireAuthAndRole([
+    'ADMIN',
+    'ACCOUNTANT',
+    'RECEPTIONIST',
+  ])
+  if (error || !hospitalId || !user?.id) {
+    return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
 
-  const body = await req.json()
-  const id = String(body.id || '')
-  const payment = Number(body.payment || 0)
-  const discount = Number(body.discount || 0)
-  const method = String(body.method || 'CASH')
-  const reference = body.reference ? String(body.reference) : null
-  const allowedMethods = ['CASH','CARD','BANK_TRANSFER','CHEQUE','OTHER']
-
-  if (!id || !Number.isFinite(payment) || !Number.isFinite(discount) || payment < 0 || discount < 0 || !allowedMethods.includes(method)) {
+  const parsed = paymentSchema.safeParse(await req.json())
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Données invalides' }, { status: 400 })
   }
+
+  const { id, payment, discount, method, reference } = parsed.data
   if (payment <= 0 && discount <= 0) {
     return NextResponse.json({ error: 'Saisissez un paiement ou une remise' }, { status: 400 })
   }
 
   if (discount > 0) {
-    const allowed = await hasPermission({ hospitalId, role: user.role, permission: 'billing.discount' })
-    if (!allowed) return NextResponse.json({ error: 'Remise non autorisée pour ce rôle' }, { status: 403 })
+    const allowed = await hasPermission({
+      hospitalId,
+      role: user.role,
+      permission: 'billing.discount',
+    })
+    if (!allowed) {
+      return NextResponse.json({ error: 'Remise non autorisée pour ce rôle' }, { status: 403 })
+    }
   }
 
-  const charges = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT id,amount,amountPaid,discount,status FROM ReceptionCharge WHERE id=? AND hospitalId=? LIMIT 1`, id, hospitalId
-  )
-  const charge = charges[0]
-  if (!charge) return NextResponse.json({ error: 'Encaissement introuvable' }, { status: 404 })
-  if (charge.status === 'PAID' || charge.status === 'CANCELLED') {
-    return NextResponse.json({ error: 'Ce dossier est déjà clôturé' }, { status: 400 })
-  }
+  try {
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const charge = await tx.receptionCharge.findFirst({
+          where: { id, hospitalId },
+        })
+        if (!charge) return { kind: 'not_found' as const }
+        if (charge.status === 'PAID' || charge.status === 'CANCELLED') {
+          return { kind: 'closed' as const }
+        }
 
-  const amount = Number(charge.amount)
-  const currentPaid = Number(charge.amountPaid)
-  const currentDiscount = Number(charge.discount)
-  const due = Math.max(0, amount - currentPaid - currentDiscount)
-  if (payment + discount > due + 0.001) {
-    return NextResponse.json({ error: `Le total dépasse le reste à payer (${due.toFixed(2)} MAD)` }, { status: 400 })
-  }
+        const amount = Number(charge.amount)
+        const currentPaid = Number(charge.amountPaid)
+        const currentDiscount = Number(charge.discount)
+        const due = Math.max(0, amount - currentPaid - currentDiscount)
 
-  const newPaid = currentPaid + payment
-  const newDiscount = currentDiscount + discount
-  const newDue = Math.max(0, amount - newPaid - newDiscount)
-  const newStatus = newDue <= 0.001 ? 'PAID' : (newPaid > 0 || newDiscount > 0 ? 'PARTIAL' : 'PENDING')
+        if (payment + discount > due + 0.001) {
+          return { kind: 'overpay' as const, due }
+        }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(
-      `UPDATE ReceptionCharge SET amountPaid=?, discount=?, status=?, paidAt=CASE WHEN ?='PAID' THEN NOW(3) ELSE paidAt END, updatedAt=NOW(3) WHERE id=? AND hospitalId=?`,
-      newPaid, newDiscount, newStatus, newStatus, id, hospitalId
+        const newPaid = currentPaid + payment
+        const newDiscount = currentDiscount + discount
+        const newDue = Math.max(0, amount - newPaid - newDiscount)
+        const newStatus =
+          newDue <= 0.001
+            ? ('PAID' as const)
+            : newPaid > 0 || newDiscount > 0
+              ? ('PARTIAL' as const)
+              : ('PENDING' as const)
+
+        await tx.receptionCharge.update({
+          where: { id },
+          data: {
+            amountPaid: newPaid,
+            discount: newDiscount,
+            status: newStatus,
+            ...(newStatus === 'PAID' ? { paidAt: new Date() } : {}),
+          },
+        })
+
+        if (payment > 0) {
+          await tx.receptionPayment.create({
+            data: {
+              hospitalId,
+              chargeId: id,
+              amount: payment,
+              method,
+              reference: reference || null,
+              receivedById: user.id,
+            },
+          })
+        }
+
+        return { kind: 'ok' as const, status: newStatus, remaining: newDue }
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     )
-    if (payment > 0) {
-      await tx.$executeRawUnsafe(
-        `INSERT INTO ReceptionPayment (id,hospitalId,chargeId,amount,method,reference,receivedById,createdAt) VALUES (?,?,?,?,?,?,?,NOW(3))`,
-        randomUUID(), hospitalId, id, payment, method, reference, user.id
+
+    if (result.kind === 'not_found') {
+      return NextResponse.json({ error: 'Encaissement introuvable' }, { status: 404 })
+    }
+    if (result.kind === 'closed') {
+      return NextResponse.json({ error: 'Ce dossier est déjà clôturé' }, { status: 400 })
+    }
+    if (result.kind === 'overpay') {
+      return NextResponse.json(
+        { error: `Le total dépasse le reste à payer (${result.due.toFixed(2)} MAD)` },
+        { status: 400 }
       )
     }
-  })
 
-  return NextResponse.json({ success: true, status: newStatus, remaining: newDue })
+    return NextResponse.json({
+      success: true,
+      status: result.status,
+      remaining: result.remaining,
+    })
+  } catch (err) {
+    console.error('Reception payment transaction failed:', err)
+    return NextResponse.json({ error: 'Impossible d’enregistrer le paiement' }, { status: 500 })
+  }
 }

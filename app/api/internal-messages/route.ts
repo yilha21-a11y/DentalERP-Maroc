@@ -1,104 +1,244 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
+import { z } from 'zod'
 import prisma from '@/lib/prisma'
 import { requireAuthAndRole } from '@/lib/api-helpers'
 import { hasPermission } from '@/lib/permissions'
 
+const createConversationSchema = z.object({
+  action: z.literal('createConversation'),
+  participantIds: z.array(z.string().min(1)).max(100).default([]),
+  isBroadcast: z.boolean().optional().default(false),
+  name: z.string().trim().max(120).nullable().optional(),
+})
+
+const sendMessageSchema = z.object({
+  conversationId: z.string().min(1),
+  message: z.string().trim().min(1).max(10000),
+  attachmentUrl: z
+    .string()
+    .max(2048)
+    .refine((value) => value.startsWith('/api/uploads/'), 'Pièce jointe invalide')
+    .nullable()
+    .optional(),
+  isUrgent: z.boolean().optional().default(false),
+})
+
 export async function GET(req: NextRequest) {
   const { error, hospitalId, user } = await requireAuthAndRole()
   const userId = user?.id
-  if (error || !hospitalId || !userId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  if (error || !hospitalId || !userId) {
+    return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
+
   const conversationId = new URL(req.url).searchParams.get('conversationId')
 
   if (!conversationId) {
-    const conversations = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT c.id,c.name,c.isGroup,c.isBroadcast,c.updatedAt,
-        COALESCE((SELECT m.body FROM InternalMessage m WHERE m.conversationId=c.id ORDER BY m.createdAt DESC LIMIT 1),'') lastMessage,
-        COALESCE((SELECT m.createdAt FROM InternalMessage m WHERE m.conversationId=c.id ORDER BY m.createdAt DESC LIMIT 1),c.createdAt) lastMessageAt,
-        (SELECT COUNT(*) FROM InternalMessage m WHERE m.conversationId=c.id AND m.senderId<>? AND (cm.lastReadAt IS NULL OR m.createdAt>cm.lastReadAt)) unreadCount,
-        GROUP_CONCAT(DISTINCT u.name ORDER BY u.name SEPARATOR ', ') memberNames
-      FROM InternalConversation c
-      JOIN InternalConversationMember cm ON cm.conversationId=c.id AND cm.userId=?
-      LEFT JOIN InternalConversationMember allm ON allm.conversationId=c.id
-      LEFT JOIN User u ON u.id=allm.userId AND u.id<>?
-      WHERE c.hospitalId=?
-      GROUP BY c.id,c.name,c.isGroup,c.isBroadcast,c.updatedAt,cm.lastReadAt,c.createdAt
-      ORDER BY lastMessageAt DESC
-    `, userId, userId, userId, hospitalId)
-    return NextResponse.json({ success: true, data: conversations })
+    const memberships = await prisma.internalConversationMember.findMany({
+      where: {
+        userId,
+        conversation: { hospitalId },
+      },
+      include: {
+        conversation: {
+          include: {
+            messages: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+              select: { body: true, createdAt: true },
+            },
+            members: {
+              include: {
+                user: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    const data = await Promise.all(
+      memberships.map(async (membership) => {
+        const conversation = membership.conversation
+        const unreadCount = await prisma.internalMessage.count({
+          where: {
+            conversationId: conversation.id,
+            senderId: { not: userId },
+            ...(membership.lastReadAt
+              ? { createdAt: { gt: membership.lastReadAt } }
+              : {}),
+          },
+        })
+        const last = conversation.messages[0]
+        return {
+          id: conversation.id,
+          name: conversation.name,
+          isGroup: conversation.isGroup,
+          isBroadcast: conversation.isBroadcast,
+          updatedAt: conversation.updatedAt,
+          lastMessage: last?.body || '',
+          lastMessageAt: last?.createdAt || conversation.createdAt,
+          unreadCount,
+          memberNames: conversation.members
+            .filter((member) => member.user.id !== userId)
+            .map((member) => member.user.name)
+            .sort((a, b) => a.localeCompare(b, 'fr'))
+            .join(', '),
+        }
+      })
+    )
+
+    data.sort(
+      (a, b) =>
+        new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+    )
+    return NextResponse.json({ success: true, data })
   }
 
-  const members = await prisma.$queryRawUnsafe<any[]>(`SELECT id FROM InternalConversationMember WHERE conversationId=? AND userId=? LIMIT 1`, conversationId, userId)
-  if (!members.length) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+  const membership = await prisma.internalConversationMember.findFirst({
+    where: {
+      conversationId,
+      userId,
+      conversation: { hospitalId },
+    },
+    select: { id: true },
+  })
+  if (!membership) {
+    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+  }
 
-  const rows = await prisma.$queryRawUnsafe<any[]>(`
-    SELECT m.id,m.body,m.attachmentUrl,m.isUrgent,m.createdAt,m.senderId,u.name senderName
-    FROM InternalMessage m JOIN User u ON u.id=m.senderId
-    JOIN InternalConversation c ON c.id=m.conversationId
-    WHERE m.conversationId=? AND c.hospitalId=? ORDER BY m.createdAt ASC LIMIT 500
-  `, conversationId, hospitalId)
+  const rows = await prisma.internalMessage.findMany({
+    where: {
+      conversationId,
+      conversation: { hospitalId },
+    },
+    include: {
+      sender: { select: { name: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: 500,
+  })
 
-  await prisma.$executeRawUnsafe(`UPDATE InternalConversationMember SET lastReadAt=NOW(3) WHERE conversationId=? AND userId=?`, conversationId, userId)
-  return NextResponse.json({ success: true, data: rows })
+  await prisma.internalConversationMember.update({
+    where: { id: membership.id },
+    data: { lastReadAt: new Date() },
+  })
+
+  return NextResponse.json({
+    success: true,
+    data: rows.map((message) => ({
+      id: message.id,
+      body: message.body,
+      attachmentUrl: message.attachmentUrl,
+      isUrgent: message.isUrgent,
+      createdAt: message.createdAt,
+      senderId: message.senderId,
+      senderName: message.sender.name,
+    })),
+  })
 }
 
 export async function POST(req: NextRequest) {
   const { error, hospitalId, user } = await requireAuthAndRole()
   const userId = user?.id
-  if (error || !hospitalId || !userId) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  if (error || !hospitalId || !userId) {
+    return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
+
   const body = await req.json()
 
-  if (body.action === 'createConversation') {
-    const requestedIds = Array.isArray(body.participantIds) ? body.participantIds.map(String) : []
-    const isBroadcast = Boolean(body.isBroadcast)
-
-    if (isBroadcast) {
-      const allowed = await hasPermission({ hospitalId, role: user.role, permission: 'messages.broadcast' })
-      if (!allowed) return NextResponse.json({ error: 'Diffusion générale non autorisée' }, { status: 403 })
+  if (body?.action === 'createConversation') {
+    const parsed = createConversationSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Données de conversation invalides' }, { status: 400 })
     }
 
-    let participantIds = requestedIds
+    const { isBroadcast, name } = parsed.data
+    let participantIds = [...new Set(parsed.data.participantIds)]
+
     if (isBroadcast) {
+      const allowed = await hasPermission({
+        hospitalId,
+        role: user.role,
+        permission: 'messages.broadcast',
+      })
+      if (!allowed) {
+        return NextResponse.json({ error: 'Diffusion générale non autorisée' }, { status: 403 })
+      }
+
       const users = await prisma.user.findMany({
         where: { hospitalId, isActive: true },
         select: { id: true },
       })
-      participantIds = users.map((u) => u.id)
-    } else if (participantIds.length) {
+      participantIds = users.map((entry) => entry.id)
+    } else {
       const validUsers = await prisma.user.findMany({
-        where: { id: { in: participantIds }, hospitalId, isActive: true },
+        where: {
+          id: { in: participantIds },
+          hospitalId,
+          isActive: true,
+        },
         select: { id: true },
       })
-      participantIds = validUsers.map((u) => u.id)
+      participantIds = validUsers.map((entry) => entry.id)
     }
 
     if (!isBroadcast && participantIds.length === 0) {
-      return NextResponse.json({ error: 'Sélectionnez au moins un destinataire' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Sélectionnez au moins un destinataire' },
+        { status: 400 }
+      )
     }
 
-    const conversationId = randomUUID()
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO InternalConversation (id,hospitalId,name,isGroup,isBroadcast,createdById,createdAt,updatedAt) VALUES (?,?,?,?,?,?,NOW(3),NOW(3))`,
-      conversationId, hospitalId, body.name || null, participantIds.length > 1, isBroadcast, userId
-    )
-    const allMembers = Array.from(new Set([userId, ...participantIds]))
-    for (const memberId of allMembers) {
-      await prisma.$executeRawUnsafe(`INSERT IGNORE INTO InternalConversationMember (id,conversationId,userId,joinedAt) VALUES (?,?,?,NOW(3))`, randomUUID(), conversationId, memberId)
-    }
-    return NextResponse.json({ success: true, conversationId })
+    const allMembers = [...new Set([userId, ...participantIds])]
+    const conversation = await prisma.internalConversation.create({
+      data: {
+        hospitalId,
+        name: name || null,
+        isGroup: allMembers.length > 2,
+        isBroadcast,
+        createdById: userId,
+        members: {
+          create: allMembers.map((memberId) => ({ userId: memberId })),
+        },
+      },
+      select: { id: true },
+    })
+
+    return NextResponse.json({ success: true, conversationId: conversation.id })
   }
 
-  const conversationId = String(body.conversationId || '')
-  const message = String(body.message || '').trim()
-  if (!conversationId || !message) return NextResponse.json({ error: 'Message requis' }, { status: 400 })
+  const parsed = sendMessageSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Message invalide' }, { status: 400 })
+  }
 
-  const member = await prisma.$queryRawUnsafe<any[]>(`SELECT id FROM InternalConversationMember WHERE conversationId=? AND userId=? LIMIT 1`, conversationId, userId)
-  if (!member.length) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+  const membership = await prisma.internalConversationMember.findFirst({
+    where: {
+      conversationId: parsed.data.conversationId,
+      userId,
+      conversation: { hospitalId },
+    },
+    select: { id: true },
+  })
+  if (!membership) {
+    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+  }
 
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO InternalMessage (id,conversationId,senderId,body,attachmentUrl,isUrgent,createdAt) VALUES (?,?,?,?,?,?,NOW(3))`,
-    randomUUID(), conversationId, userId, message, body.attachmentUrl || null, Boolean(body.isUrgent)
-  )
-  await prisma.$executeRawUnsafe(`UPDATE InternalConversation SET updatedAt=NOW(3) WHERE id=? AND hospitalId=?`, conversationId, hospitalId)
+  await prisma.$transaction([
+    prisma.internalMessage.create({
+      data: {
+        conversationId: parsed.data.conversationId,
+        senderId: userId,
+        body: parsed.data.message,
+        attachmentUrl: parsed.data.attachmentUrl || null,
+        isUrgent: parsed.data.isUrgent,
+      },
+    }),
+    prisma.internalConversation.update({
+      where: { id: parsed.data.conversationId },
+      data: { updatedAt: new Date() },
+    }),
+  ])
+
   return NextResponse.json({ success: true })
 }

@@ -1,32 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import prisma from '@/lib/prisma'
 import { requireAuthAndRole } from '@/lib/api-helpers'
 
-export async function GET(req: NextRequest) {
-  const { error, hospitalId, user } = await requireAuthAndRole(['ADMIN', 'ACCOUNTANT', 'DOCTOR'])
-  if (error || !hospitalId || !user) return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+type DoctorReportRow = {
+  doctorId: string
+  doctorName: string
+  appointments: bigint | number
+  completedAppointments: bigint | number
+  noShows: bigint | number
+  patientsSeen: bigint | number
+  newPatients: bigint | number
+  generatedRevenue: Prisma.Decimal | number
+  collectedRevenue: Prisma.Decimal | number
+  outstanding: Prisma.Decimal | number
+  avgTreatmentMinutes: Prisma.Decimal | number
+  treatmentCount: bigint | number
+  avgRevenuePerPatient: Prisma.Decimal | number
+  noShowRate: Prisma.Decimal | number
+}
 
-  const url = new URL(req.url)
-  const month = url.searchParams.get('month') || new Date().toISOString().slice(0, 7)
+export async function GET(req: NextRequest) {
+  const { error, hospitalId, user } = await requireAuthAndRole([
+    'ADMIN',
+    'ACCOUNTANT',
+    'DOCTOR',
+  ])
+  if (error || !hospitalId || !user) {
+    return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
+
+  const month = new URL(req.url).searchParams.get('month') || new Date().toISOString().slice(0, 7)
   if (!/^\d{4}-\d{2}$/.test(month)) {
-    return NextResponse.json({ error: 'Mois invalide. Format attendu: YYYY-MM' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Mois invalide. Format attendu : YYYY-MM' },
+      { status: 400 }
+    )
   }
 
   const start = new Date(`${month}-01T00:00:00`)
   const end = new Date(start)
   end.setMonth(end.getMonth() + 1)
 
-  const staffFilter = user.role === 'DOCTOR' ? ' AND s.userId = ?' : ''
-  const params: unknown[] = [
-    start, end,      // appointments
-    start, end,      // new patients inside treatment aggregate
-    start, end,      // treatments
-    start, end,      // reception charges
-    hospitalId,
-  ]
-  if (user.role === 'DOCTOR') params.push(user.id)
+  const doctorFilter =
+    user.role === 'DOCTOR' ? Prisma.sql`AND s.userId = ${user.id}` : Prisma.empty
 
-  const rows = await prisma.$queryRawUnsafe<any[]>(`
+  const rows = await prisma.$queryRaw<DoctorReportRow[]>(Prisma.sql`
     SELECT
       s.id AS doctorId,
       CONCAT(s.firstName,' ',s.lastName) AS doctorName,
@@ -53,19 +72,24 @@ export async function GET(req: NextRequest) {
         SUM(status='COMPLETED') AS completedAppointments,
         SUM(status='NO_SHOW') AS noShows
       FROM Appointment
-      WHERE scheduledDate >= ? AND scheduledDate < ?
+      WHERE hospitalId = ${hospitalId}
+        AND scheduledDate >= ${start}
+        AND scheduledDate < ${end}
       GROUP BY doctorId
     ) a ON a.doctorId=s.id
     LEFT JOIN (
       SELECT t.doctorId,
         COUNT(*) AS treatmentCount,
         COUNT(DISTINCT t.patientId) AS patientsSeen,
-        COUNT(DISTINCT CASE WHEN p.createdAt >= ? AND p.createdAt < ? THEN p.id END) AS newPatients,
+        COUNT(DISTINCT CASE WHEN p.createdAt >= ${start} AND p.createdAt < ${end} THEN p.id END) AS newPatients,
         CAST(COALESCE(SUM(t.cost),0) AS DECIMAL(12,2)) AS generatedRevenue,
-        CAST(COALESCE(AVG(CASE WHEN t.startTime IS NOT NULL AND t.endTime IS NOT NULL THEN TIMESTAMPDIFF(MINUTE,t.startTime,t.endTime) END),0) AS DECIMAL(10,2)) AS avgTreatmentMinutes
+        CAST(COALESCE(AVG(CASE WHEN t.startTime IS NOT NULL AND t.endTime IS NOT NULL
+          THEN TIMESTAMPDIFF(MINUTE,t.startTime,t.endTime) END),0) AS DECIMAL(10,2)) AS avgTreatmentMinutes
       FROM Treatment t
       JOIN Patient p ON p.id=t.patientId
-      WHERE t.createdAt >= ? AND t.createdAt < ?
+      WHERE t.hospitalId = ${hospitalId}
+        AND t.createdAt >= ${start}
+        AND t.createdAt < ${end}
       GROUP BY t.doctorId
     ) t ON t.doctorId=s.id
     LEFT JOIN (
@@ -73,12 +97,32 @@ export async function GET(req: NextRequest) {
         CAST(COALESCE(SUM(amountPaid),0) AS DECIMAL(12,2)) AS collectedRevenue,
         CAST(COALESCE(SUM(GREATEST(amount - amountPaid - discount,0)),0) AS DECIMAL(12,2)) AS outstanding
       FROM ReceptionCharge
-      WHERE sentAt >= ? AND sentAt < ?
+      WHERE hospitalId = ${hospitalId}
+        AND sentAt >= ${start}
+        AND sentAt < ${end}
       GROUP BY doctorId
     ) rc ON rc.doctorId=s.id
-    WHERE s.hospitalId=? AND s.isActive=1 ${staffFilter}
+    WHERE s.hospitalId = ${hospitalId}
+      AND s.isActive=1
+      ${doctorFilter}
     ORDER BY generatedRevenue DESC
-  `, ...params)
+  `)
 
-  return NextResponse.json({ success: true, month, currency: 'MAD', scope: user.role === 'DOCTOR' ? 'own' : 'all', data: rows })
+  const data = rows.map((row) => ({
+    ...row,
+    appointments: Number(row.appointments),
+    completedAppointments: Number(row.completedAppointments),
+    noShows: Number(row.noShows),
+    patientsSeen: Number(row.patientsSeen),
+    newPatients: Number(row.newPatients),
+    treatmentCount: Number(row.treatmentCount),
+  }))
+
+  return NextResponse.json({
+    success: true,
+    month,
+    currency: 'MAD',
+    scope: user.role === 'DOCTOR' ? 'own' : 'all',
+    data,
+  })
 }

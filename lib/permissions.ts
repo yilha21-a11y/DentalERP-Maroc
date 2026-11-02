@@ -25,18 +25,18 @@ export async function hasPermission(input: {
 }) {
   if (input.role === 'ADMIN') return true
 
-  try {
-    const rows = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT allowed FROM RolePermission WHERE hospitalId=? AND role=? AND permission=? LIMIT 1`,
-      input.hospitalId,
-      input.role,
-      input.permission
-    )
-    if (rows.length) return Boolean(rows[0].allowed)
-  } catch {
-    // Migration may not have been applied yet; fall back to safe role defaults.
-  }
+  const override = await prisma.rolePermission.findUnique({
+    where: {
+      hospitalId_role_permission: {
+        hospitalId: input.hospitalId,
+        role: input.role,
+        permission: input.permission,
+      },
+    },
+    select: { allowed: true },
+  }).catch(() => null)
 
+  if (override) return override.allowed
   return (roleDefaults[input.role] || []).includes(input.permission)
 }
 

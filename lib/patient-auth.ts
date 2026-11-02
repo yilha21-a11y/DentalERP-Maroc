@@ -1,42 +1,89 @@
+import { randomInt } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { SignJWT, jwtVerify } from 'jose'
+import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 
 const COOKIE_NAME = 'patient-portal-token'
-const JWT_SECRET = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || 'patient-portal-secret')
+const JWT_ISSUER = 'dentalerp-maroc'
+const JWT_AUDIENCE = 'patient-portal'
 
 interface PatientTokenPayload {
   patientId: string
   hospitalId: string
   phone: string
+  authVersion: number
+}
+
+function getPatientJwtSecret(): Uint8Array {
+  const secret = process.env.PATIENT_JWT_SECRET
+  if (!secret || secret.length < 32) {
+    throw new Error('PATIENT_JWT_SECRET must be configured with at least 32 characters')
+  }
+  return new TextEncoder().encode(secret)
 }
 
 /**
- * Generate a 6-digit OTP
+ * Generate a cryptographically secure 6-digit OTP.
  */
 export function generateOTP(): string {
-  return String(Math.floor(100000 + Math.random() * 900000))
+  return String(randomInt(100000, 1000000))
 }
 
 /**
- * Create a JWT for authenticated patient
+ * Store only a one-way hash of OTP values.
+ */
+export async function hashOTP(otp: string): Promise<string> {
+  return bcrypt.hash(otp, 12)
+}
+
+export async function verifyOTPHash(otp: string, hash: string): Promise<boolean> {
+  try {
+    return await bcrypt.compare(otp, hash)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Create a JWT for an authenticated patient.
  */
 export async function createPatientToken(payload: PatientTokenPayload): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
+    .setIssuer(JWT_ISSUER)
+    .setAudience(JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(JWT_SECRET)
+    .sign(getPatientJwtSecret())
 }
 
 /**
- * Verify and decode patient JWT
+ * Verify and decode a patient JWT.
  */
 async function verifyPatientToken(token: string): Promise<PatientTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET)
-    return payload as unknown as PatientTokenPayload
+    const { payload } = await jwtVerify(token, getPatientJwtSecret(), {
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    })
+
+    if (
+      typeof payload.patientId !== 'string' ||
+      typeof payload.hospitalId !== 'string' ||
+      typeof payload.phone !== 'string' ||
+      typeof payload.authVersion !== 'number'
+    ) {
+      return null
+    }
+
+    return {
+      patientId: payload.patientId,
+      hospitalId: payload.hospitalId,
+      phone: payload.phone,
+      authVersion: payload.authVersion,
+    }
   } catch {
     return null
   }
@@ -61,11 +108,12 @@ export async function getAuthenticatedPatient(req?: NextRequest) {
   const payload = await verifyPatientToken(token)
   if (!payload) return null
 
-  // Verify patient still exists and is active
+  // Verify patient still exists and is active.
   const patient = await prisma.patient.findFirst({
     where: {
       id: payload.patientId,
       hospitalId: payload.hospitalId,
+      phone: payload.phone,
       isActive: true,
     },
     select: {
@@ -76,16 +124,18 @@ export async function getAuthenticatedPatient(req?: NextRequest) {
       lastName: true,
       phone: true,
       email: true,
+      portalAuthVersion: true,
     },
   })
 
-  if (!patient) return null
+  if (!patient || patient.portalAuthVersion !== payload.authVersion) return null
 
-  return patient
+  const { portalAuthVersion: _portalAuthVersion, ...safePatient } = patient
+  return safePatient
 }
 
 /**
- * Require authenticated patient — returns error response or patient context
+ * Require authenticated patient — returns error response or patient context.
  */
 export async function requirePatientAuth(req?: NextRequest) {
   const patient = await getAuthenticatedPatient(req)
@@ -101,21 +151,21 @@ export async function requirePatientAuth(req?: NextRequest) {
 }
 
 /**
- * Set patient auth cookie on response
+ * Set patient auth cookie on response.
  */
 export function setPatientCookie(response: NextResponse, token: string) {
   response.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 7 * 24 * 60 * 60,
     path: '/',
   })
   return response
 }
 
 /**
- * Clear patient auth cookie
+ * Clear patient auth cookie.
  */
 export function clearPatientCookie(response: NextResponse) {
   response.cookies.set(COOKIE_NAME, '', {

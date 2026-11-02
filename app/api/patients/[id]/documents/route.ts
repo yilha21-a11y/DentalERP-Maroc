@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuthAndRole } from '@/lib/api-helpers'
 import prisma from '@/lib/prisma'
-import path from 'path'
 import { randomUUID } from 'crypto'
 import { buildStorageKey, getStorage } from '@/lib/storage'
+import { extensionForMime, validateDocumentSignature } from '@/lib/file-security'
+import { DocumentType } from '@prisma/client'
+import { z } from 'zod'
 
 // GET /api/patients/[id]/documents - Get all documents for a patient
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -69,10 +71,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     })
   } catch (error: any) {
     console.error('Error fetching documents:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch documents' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Impossible de charger les documents' }, { status: 500 })
   }
 }
 
@@ -98,17 +97,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const formData = await req.formData()
     const file = formData.get('file') as File | null
-    const documentType = formData.get('documentType') as string
-    const description = formData.get('description') as string | null
-    const treatmentId = formData.get('treatmentId') as string | null
+    const meta = z.object({
+      documentType: z.enum(['XRAY', 'CT_SCAN', 'PHOTO', 'CONSENT_FORM', 'PRESCRIPTION', 'LAB_REPORT', 'INSURANCE', 'ID_PROOF', 'OTHER']),
+      description: z.string().trim().max(4000).nullable().optional(),
+      treatmentId: z.string().min(1).nullable().optional(),
+    }).safeParse({
+      documentType: formData.get('documentType'),
+      description: formData.get('description'),
+      treatmentId: formData.get('treatmentId'),
+    })
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    if (!documentType) {
-      return NextResponse.json({ error: 'Document type is required' }, { status: 400 })
+    if (!meta.success) {
+      return NextResponse.json({ error: 'Métadonnées du document invalides' }, { status: 400 })
     }
+    const { documentType, description, treatmentId } = meta.data
 
     // Validate file type
     const allowedTypes = [
@@ -134,21 +140,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'File size exceeds 10MB limit' }, { status: 400 })
     }
 
-    // Stored name is a UUID, so nothing attacker-controlled reaches the key.
-    // The extension is kept for content-type sniffing on the way back out and
-    // is reduced to a safe character set first.
-    const ext = path
-      .extname(file.name)
-      .toLowerCase()
-      .replace(/[^.a-z0-9]/g, '')
+    const buffer = Buffer.from(await file.arrayBuffer())
+    if (!validateDocumentSignature(buffer, file.type)) {
+      return NextResponse.json({ error: 'Le contenu du fichier ne correspond pas au format déclaré' }, { status: 400 })
+    }
+
+    const ext = extensionForMime(file.type)
+    if (!ext) {
+      return NextResponse.json({ error: 'Format de fichier non pris en charge' }, { status: 400 })
+    }
+
+    if (treatmentId) {
+      const treatment = await prisma.treatment.findFirst({
+        where: { id: treatmentId, hospitalId, patientId: id },
+        select: { id: true },
+      })
+      if (!treatment) {
+        return NextResponse.json({ error: 'Traitement associé invalide' }, { status: 400 })
+      }
+    }
+
     const fileName = `${randomUUID()}${ext}`
-
-    // Tenant-prefixed storage key. Whether this lands on local disk or in a
-    // bucket is the driver's business, not this route's.
     const key = buildStorageKey(hospitalId, 'documents', id, fileName)
-
-    const bytes = await file.arrayBuffer()
-    await getStorage().put(key, Buffer.from(bytes), { contentType: file.type })
+    await getStorage().put(key, buffer, { contentType: file.type })
 
     // Create document record. If this fails the bytes are already stored, so
     // drop them again — otherwise the file survives with no row pointing at
@@ -166,7 +180,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           fileType: file.type,
           fileSize: file.size,
           filePath: key,
-          documentType: documentType as any,
+          documentType: documentType as DocumentType,
           description: description || null,
           uploadedBy: user?.id,
         },
@@ -185,9 +199,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     })
   } catch (error: any) {
     console.error('Error uploading document:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to upload document' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Impossible d’envoyer le document' }, { status: 500 })
   }
 }
