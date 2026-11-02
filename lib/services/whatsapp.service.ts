@@ -44,19 +44,20 @@ export async function sendWhatsAppTemplate(input: {
   const providerMessageId = payload?.messages?.[0]?.id || null
   const status = response.ok ? 'SENT' : 'FAILED'
 
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO WhatsAppLog (id,hospitalId,patientId,appointmentId,phone,templateName,messageType,status,providerMessageId,errorMessage,sentAt,createdAt)
-     VALUES (UUID(),?,?,?,?,?,'TEMPLATE',?,?,?,?,NOW(3))`,
-    input.hospitalId,
-    input.patientId || null,
-    input.appointmentId || null,
-    phone,
-    input.templateName,
-    status,
-    providerMessageId,
-    response.ok ? null : JSON.stringify(payload),
-    response.ok ? new Date() : null
-  )
+  await prisma.whatsAppLog.create({
+    data: {
+      hospitalId: input.hospitalId,
+      patientId: input.patientId || null,
+      appointmentId: input.appointmentId || null,
+      phone,
+      templateName: input.templateName,
+      messageType: 'TEMPLATE',
+      status,
+      providerMessageId,
+      errorMessage: response.ok ? null : JSON.stringify(payload),
+      sentAt: response.ok ? new Date() : null,
+    },
+  })
 
   if (!response.ok) throw new Error(payload?.error?.message || 'Échec envoi WhatsApp')
   return payload
