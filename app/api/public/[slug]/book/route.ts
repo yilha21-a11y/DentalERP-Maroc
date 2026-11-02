@@ -1,105 +1,94 @@
+import { randomBytes } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { requirePatientAuth } from '@/lib/patient-auth'
 
-/**
- * POST: Public booking endpoint.
- * Requires patient phone verification (patient must exist).
- * Body: { phone, doctorId, date, time, type, chiefComplaint }
- */
+const bookingSchema = z.object({
+  // Kept optional for backward-compatible clients; identity comes from the signed patient cookie.
+  phone: z.string().optional(),
+  doctorId: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  type: z.enum(['CONSULTATION', 'PROCEDURE', 'FOLLOW_UP', 'EMERGENCY', 'CHECK_UP']).optional(),
+  chiefComplaint: z.string().trim().max(2000).optional(),
+})
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
-    const { slug } = await params
-    const body = await req.json()
-    const { phone, doctorId, date, time, type, chiefComplaint } = body as {
-      phone: string
-      doctorId: string
-      date: string
-      time: string
-      type?: string
-      chiefComplaint?: string
+    const auth = await requirePatientAuth(req)
+    if (auth.error || !auth.patient) {
+      return auth.error || NextResponse.json({ error: 'Authentification patient requise' }, { status: 401 })
     }
 
-    if (!phone || !doctorId || !date || !time) {
-      return NextResponse.json(
-        { error: 'Phone, doctor, date, and time are required' },
-        { status: 400 }
-      )
+    const parsed = bookingSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Données de rendez-vous invalides' }, { status: 400 })
     }
+
+    const { slug } = await params
+    const { doctorId, date, time, type, chiefComplaint } = parsed.data
 
     const hospital = await prisma.hospital.findUnique({
       where: { slug },
-      select: { id: true, patientPortalEnabled: true },
+      select: { id: true, patientPortalEnabled: true, isActive: true },
     })
 
-    if (!hospital) {
-      return NextResponse.json({ error: 'Clinic not found' }, { status: 404 })
+    if (
+      !hospital ||
+      !hospital.isActive ||
+      !hospital.patientPortalEnabled ||
+      hospital.id !== auth.patient.hospitalId
+    ) {
+      return NextResponse.json({ error: 'Réservation indisponible' }, { status: 404 })
     }
 
-    if (!hospital.patientPortalEnabled) {
-      return NextResponse.json({ error: 'Online booking is not enabled' }, { status: 403 })
-    }
-
-    // Find patient by phone
-    const patient = await prisma.patient.findFirst({
-      where: { hospitalId: hospital.id, phone, isActive: true },
-      select: { id: true, firstName: true, lastName: true },
-    })
-
-    if (!patient) {
-      return NextResponse.json(
-        { error: 'No patient account found with this phone number. Please contact the clinic.' },
-        { status: 404 }
-      )
-    }
-
-    // Verify doctor
     const doctor = await prisma.staff.findFirst({
       where: { id: doctorId, hospitalId: hospital.id },
       select: { id: true, firstName: true, lastName: true },
     })
 
     if (!doctor) {
-      return NextResponse.json({ error: 'Doctor not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Praticien introuvable' }, { status: 404 })
     }
 
-    // Check for duplicate booking
-    const dateObj = new Date(date)
-    const existing = await prisma.appointment.findFirst({
+    const dateObj = new Date(`${date}T00:00:00`)
+    if (Number.isNaN(dateObj.getTime())) {
+      return NextResponse.json({ error: 'Date invalide' }, { status: 400 })
+    }
+
+    const now = new Date()
+    const requestedDateTime = new Date(`${date}T${time}:00`)
+    if (Number.isNaN(requestedDateTime.getTime()) || requestedDateTime <= now) {
+      return NextResponse.json({ error: 'Le rendez-vous doit être dans le futur' }, { status: 400 })
+    }
+
+    const conflictingAppointment = await prisma.appointment.findFirst({
       where: {
         hospitalId: hospital.id,
-        patientId: patient.id,
         doctorId,
         scheduledDate: dateObj,
         scheduledTime: time,
         status: { notIn: ['CANCELLED', 'NO_SHOW', 'RESCHEDULED'] },
       },
+      select: { id: true, patientId: true },
     })
 
-    if (existing) {
-      return NextResponse.json(
-        { error: 'You already have a booking at this time' },
-        { status: 409 }
-      )
+    if (conflictingAppointment) {
+      return NextResponse.json({ error: 'Ce créneau n’est plus disponible' }, { status: 409 })
     }
 
-    // Generate appointment number
-    const lastAppt = await prisma.appointment.findFirst({
-      where: { hospitalId: hospital.id },
-      orderBy: { createdAt: 'desc' },
-      select: { appointmentNo: true },
-    })
-    const lastNum = lastAppt ? parseInt(lastAppt.appointmentNo.replace(/\D/g, '')) || 0 : 0
-    const appointmentNo = `APT${String(lastNum + 1).padStart(5, '0')}`
+    const appointmentNo = `APT-${date.replaceAll('-', '')}-${randomBytes(4).toString('hex').toUpperCase()}`
 
     const appointment = await prisma.appointment.create({
       data: {
         hospitalId: hospital.id,
         appointmentNo,
-        patientId: patient.id,
+        patientId: auth.patient.id,
         doctorId,
         scheduledDate: dateObj,
         scheduledTime: time,
-        appointmentType: (type as any) || 'CONSULTATION',
+        appointmentType: type || 'CONSULTATION',
         status: 'SCHEDULED',
         chiefComplaint: chiefComplaint || null,
       },
@@ -112,13 +101,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
           appointmentNo: appointment.appointmentNo,
           date: appointment.scheduledDate,
           time: appointment.scheduledTime,
-          doctor: `Dr. ${doctor.firstName} ${doctor.lastName}`,
+          doctor: `Dr ${doctor.firstName} ${doctor.lastName}`,
         },
       },
       { status: 201 }
     )
-  } catch (err: unknown) {
+  } catch (err) {
     console.error('Public booking error:', err)
-    return NextResponse.json({ error: 'Failed to book appointment' }, { status: 500 })
+    return NextResponse.json({ error: 'Impossible de réserver le rendez-vous' }, { status: 500 })
   }
 }
