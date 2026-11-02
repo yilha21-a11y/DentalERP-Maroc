@@ -1,29 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuthAndRole } from '@/lib/api-helpers'
+import { randomInt } from 'node:crypto'
+import { z } from 'zod'
+import { normalizeMoroccoPhone } from '@/lib/utils'
 
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = 'REF-'
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
+  for (let i = 0; i < 8; i++) {
+    code += chars[randomInt(0, chars.length)]
   }
   return code
 }
+
+const createReferralSchema = z.object({
+  referrerPatientId: z.string().min(1),
+  referredName: z.string().trim().min(2).max(150),
+  referredPhone: z.string().trim().min(8).max(30),
+  rewardType: z.string().trim().max(50).optional(),
+  rewardValue: z.coerce.number().min(0).max(1000000).nullable().optional(),
+})
 
 // GET - List referrals
 export async function GET(request: NextRequest) {
   const { error, hospitalId } = await requireAuthAndRole()
   if (error || !hospitalId) {
-    return error || NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return error || NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
 
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || ''
     const search = searchParams.get('search') || ''
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10) || 20))
 
     const where: any = { hospitalId }
     if (status) where.status = status
@@ -78,7 +89,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (err) {
     console.error('Error fetching referrals:', err)
-    return NextResponse.json({ error: 'Failed to fetch referrals' }, { status: 500 })
+    return NextResponse.json({ error: 'Impossible de charger les parrainages' }, { status: 500 })
   }
 }
 
@@ -91,25 +102,22 @@ export async function POST(request: NextRequest) {
 
   try {
     if (!['ADMIN', 'RECEPTIONIST'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+      return NextResponse.json({ error: 'Action non autorisée' }, { status: 403 })
     }
 
-    const body = await request.json()
-    const { referrerPatientId, referredName, referredPhone, rewardType, rewardValue } = body
-
-    if (!referrerPatientId || !referredName?.trim() || !referredPhone?.trim()) {
-      return NextResponse.json(
-        { error: 'Referrer patient, referred name, and phone are required' },
-        { status: 400 }
-      )
+    const parsed = createReferralSchema.safeParse(await request.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Données de parrainage invalides' }, { status: 400 })
     }
+    const { referrerPatientId, referredName, rewardType, rewardValue } = parsed.data
+    const referredPhone = normalizeMoroccoPhone(parsed.data.referredPhone)
 
     // Verify referrer patient
     const referrer = await prisma.patient.findUnique({
       where: { id: referrerPatientId, hospitalId },
     })
     if (!referrer) {
-      return NextResponse.json({ error: 'Referrer patient not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Patient parrain introuvable' }, { status: 404 })
     }
 
     // Generate unique code
@@ -127,7 +135,7 @@ export async function POST(request: NextRequest) {
         hospitalId,
         referrerPatientId,
         referredName: referredName.trim(),
-        referredPhone: referredPhone.trim(),
+        referredPhone,
         referralCode,
         rewardType: rewardType || 'POINTS',
         rewardValue: rewardValue || null,
@@ -137,6 +145,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(referral, { status: 201 })
   } catch (err) {
     console.error('Error creating referral:', err)
-    return NextResponse.json({ error: 'Failed to create referral' }, { status: 500 })
+    return NextResponse.json({ error: 'Impossible de créer le parrainage' }, { status: 500 })
   }
 }
