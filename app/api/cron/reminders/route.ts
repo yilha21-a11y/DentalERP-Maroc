@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsAppTemplate } from '@/lib/services/whatsapp.service'
+import { requireCronAuth } from '@/lib/cron-auth'
 
 function appointmentDateTime(date: Date, time: string) {
   const d = new Date(date)
