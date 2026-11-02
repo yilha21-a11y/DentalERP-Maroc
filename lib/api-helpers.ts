@@ -3,6 +3,10 @@ import { headers } from 'next/headers'
 import { jwtVerify } from 'jose'
 import { auth } from './auth'
 import { prisma } from './prisma'
+import { secureRandomInt } from './security/random'
+
+export const MOBILE_TOKEN_ISSUER = 'dentalerp-maroc'
+export const MOBILE_TOKEN_AUDIENCE = 'dentalerp-mobile'
 
 /**
  * Verify a mobile Bearer token (JWT signed with NEXTAUTH_SECRET via jose).
@@ -16,7 +20,11 @@ async function verifyMobileToken(): Promise<any | null> {
 
     const token = authHeader.slice(7)
     const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
-    const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] })
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ['HS256'],
+      issuer: MOBILE_TOKEN_ISSUER,
+      audience: MOBILE_TOKEN_AUDIENCE,
+    })
 
     return {
       id: payload.sub,
@@ -231,7 +239,7 @@ export function generateToken(length = 32): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
   let token = ''
   for (let i = 0; i < length; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length))
+    token += chars.charAt(secureRandomInt(chars.length))
   }
   return token
 }

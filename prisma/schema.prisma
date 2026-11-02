@@ -470,6 +470,9 @@ model Patient {
   aiSummary       Json?
   aiSummaryAt     DateTime?
 
+  // Incrémenté pour révoquer toutes les sessions du portail patient (JWT "sv").
+  portalSessionVersion Int   @default(0)
+
   isActive        Boolean    @default(true)
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
@@ -2428,7 +2431,9 @@ model PatientOTP {
   id          String   @id @default(cuid())
   hospitalId  String
   phone       String
-  otp         String
+  // HMAC-SHA256 du code (jamais le code en clair)
+  otpHash     String
+  ipAddress   String?
   expiresAt   DateTime
   verified    Boolean  @default(false)
   attempts    Int      @default(0)
@@ -2437,6 +2442,7 @@ model PatientOTP {
   hospital    Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
 
   @@index([phone, hospitalId])
+  @@index([ipAddress, createdAt])
   @@index([expiresAt])
 }
 

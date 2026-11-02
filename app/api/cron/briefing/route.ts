@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
 import { complete } from '@/lib/ai/openrouter'
 import { getModelByTier } from '@/lib/ai/models'
@@ -10,10 +11,8 @@ import { getModelByTier } from '@/lib/ai/models'
  * Secured via CRON_SECRET header.
  */
 export async function GET(req: Request) {
-  const secret = req.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = requireCronAuth(req)
+  if (unauthorized) return unauthorized
 
   const hospitals = await prisma.hospital.findMany({
     where: { isActive: true, onboardingCompleted: true },
