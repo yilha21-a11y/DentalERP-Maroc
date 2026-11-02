@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePatientAuth } from '@/lib/patient-auth'
-import path from 'path'
 import { randomUUID } from 'crypto'
 import { buildStorageKey, getStorage } from '@/lib/storage'
+import { extensionForMime, validateImageSignature } from '@/lib/file-security'
+import { z } from 'zod'
 
 /**
  * POST /api/patient-portal/upload-photo
@@ -17,8 +18,17 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File | null
-    const description = formData.get('description') as string | null
-    const category = formData.get('category') as string | null // e.g. "pain", "swelling", "bleeding", "other"
+    const meta = z.object({
+      description: z.string().trim().max(2000).nullable().optional(),
+      category: z.enum(['pain', 'swelling', 'bleeding', 'other']).nullable().optional(),
+    }).safeParse({
+      description: formData.get('description'),
+      category: formData.get('category'),
+    })
+    if (!meta.success) {
+      return NextResponse.json({ error: 'Métadonnées invalides' }, { status: 400 })
+    }
+    const { description, category } = meta.data
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -38,22 +48,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File size must be under 10MB' }, { status: 400 })
     }
 
-    // Save file. This route already wrote a tenant-prefixed relative path, so
-    // its stored value is unchanged by the storage refactor — what changed is
-    // that the rest of the app now understands that shape. Downloading or
-    // permanently deleting one of these previously failed, because both of
-    // those paths assumed the `/uploads` prefix that only staff uploads had.
-    const ext =
-      path
-        .extname(file.name)
-        .toLowerCase()
-        .replace(/[^.a-z0-9]/g, '') || '.jpg'
+    const buffer = Buffer.from(await file.arrayBuffer())
+    if (!validateImageSignature(buffer, file.type)) {
+      return NextResponse.json({ error: 'Le contenu du fichier image est invalide' }, { status: 400 })
+    }
+
+    const ext = extensionForMime(file.type)
+    if (!ext) {
+      return NextResponse.json({ error: 'Format d’image non pris en charge' }, { status: 400 })
+    }
+
     const fileName = `${randomUUID()}${ext}`
     const key = buildStorageKey(patient!.hospitalId, 'patients', patient!.id, 'triage', fileName)
 
-    await getStorage().put(key, Buffer.from(await file.arrayBuffer()), {
-      contentType: file.type,
-    })
+    await getStorage().put(key, buffer, { contentType: file.type })
 
     // Create Document record
     const fullDescription = [category ? `Triage category: ${category}` : null, description]
@@ -74,7 +82,7 @@ export async function POST(req: NextRequest) {
           fileSize: file.size,
           filePath: key,
           documentType: 'PHOTO',
-          description: fullDescription || 'Patient-uploaded triage photo',
+          description: fullDescription || 'Photo envoyée par le patient pour triage',
           uploadedBy: `patient:${patient!.id}`,
         },
       })
@@ -101,8 +109,8 @@ export async function POST(req: NextRequest) {
         data: doctors.map((doc) => ({
           hospitalId: patient!.hospitalId,
           userId: doc.id,
-          title: 'New Patient Photo for Triage',
-          message: `${patient!.firstName} ${patient!.lastName} uploaded a photo${category ? ` (${category})` : ''}. ${description || 'Please review.'}`,
+          title: 'Nouvelle photo patient à examiner',
+          message: `${patient!.firstName} ${patient!.lastName} a envoyé une photo${category ? ` (${category})` : ''}. ${description || 'À examiner.'}`,
           type: 'GENERAL' as any,
           entityType: 'Document',
           entityId: document.id,
@@ -123,6 +131,6 @@ export async function POST(req: NextRequest) {
     )
   } catch (err: any) {
     console.error('Photo upload error:', err)
-    return NextResponse.json({ error: err.message || 'Failed to upload photo' }, { status: 500 })
+    return NextResponse.json({ error: 'Impossible d’envoyer la photo' }, { status: 500 })
   }
 }
