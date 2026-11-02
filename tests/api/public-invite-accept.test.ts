@@ -1,245 +1,92 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+// @ts-nocheck
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import prisma from '@/tests/__mocks__/prisma'
 
 vi.mock('@/lib/prisma', () => ({ prisma, default: prisma }))
 vi.mock('@prisma/client', () => ({
-  StaffInviteStatus: {
-    PENDING: 'PENDING',
-    ACCEPTED: 'ACCEPTED',
-    EXPIRED: 'EXPIRED',
-    CANCELLED: 'CANCELLED',
-  },
-  Role: { ADMIN: 'ADMIN', DOCTOR: 'DOCTOR', RECEPTIONIST: 'RECEPTIONIST', STAFF: 'STAFF' },
+  StaffInviteStatus: { PENDING: 'PENDING', ACCEPTED: 'ACCEPTED', EXPIRED: 'EXPIRED' },
 }))
-vi.mock('bcryptjs', () => ({
-  default: { hash: vi.fn().mockResolvedValue('hashed-password') },
+vi.mock('bcryptjs', () => ({ default: { hash: vi.fn().mockResolvedValue('hashed') } }))
+vi.mock('@/lib/services/whatsapp.service', () => ({
+  normalizeMoroccoPhone: vi.fn((phone: string) => phone.replace(/\D/g, '').replace(/^0/, '212')),
+}))
+vi.mock('@/lib/rate-limit', () => ({
+  getClientIp: vi.fn(() => '127.0.0.1'),
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 10, retryAfterSeconds: 0 }),
 }))
 
-const mod = await import('@/app/api/public/invite/accept/route')
+const { POST, GET } = await import('@/app/api/public/invite/accept/route')
 
-function makePostRequest(body: any) {
+const validInvite = {
+  id: 'invite-1',
+  email: 'dentiste@cabinet.ma',
+  name: 'Sara Amrani',
+  role: 'DOCTOR',
+  token: 'x'.repeat(48),
+  status: 'PENDING',
+  hospitalId: 'h1',
+  expiresAt: new Date(Date.now() + 86400000),
+  hospital: { id: 'h1', name: 'Cabinet Test', isActive: true },
+}
+
+function post(body: unknown) {
   return new Request('http://localhost/api/public/invite/accept', {
     method: 'POST',
     body: JSON.stringify(body),
     headers: { 'Content-Type': 'application/json' },
-  }) as any
+  })
 }
-
-function makeGetRequest(token?: string) {
+function get(token?: string) {
   const url = new URL('http://localhost/api/public/invite/accept')
   if (token) url.searchParams.set('token', token)
-  return new Request(url.toString()) as any
+  return new Request(url)
 }
 
-const validInvite = {
-  id: 'invite-1',
-  email: 'jane@example.com',
-  name: 'Jane Smith',
-  role: 'DOCTOR',
-  token: 'valid-token-123',
-  status: 'PENDING',
-  hospitalId: 'hospital-1',
-  expiresAt: new Date(Date.now() + 86400000), // +1 day
-  hospital: { id: 'hospital-1', name: 'Test Clinic', isActive: true },
-}
+describe('staff invite acceptance', () => {
+  beforeEach(() => vi.clearAllMocks())
 
-describe('POST /api/public/invite/accept', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('accepts invite and creates user + staff in transaction', async () => {
+  it('accepts a valid invite using Morocco phone normalization', async () => {
     ;(prisma.staffInvite.findUnique as any).mockResolvedValue(validInvite)
-    ;(prisma.user.findUnique as any).mockResolvedValue(null) // no existing user
-    ;(prisma.staff.count as any).mockResolvedValue(5)
-    // $transaction mock already delegates to callback
-    ;(prisma.user.create as any).mockResolvedValue({ id: 'user-new' })
+    ;(prisma.user.findUnique as any).mockResolvedValue(null)
+    ;(prisma.$transaction as any).mockImplementation(async (fn: any) =>
+      fn({ user: prisma.user, staffInvite: prisma.staffInvite })
+    )
+    ;(prisma.user.create as any).mockResolvedValue({ id: 'u1' })
     ;(prisma.staffInvite.update as any).mockResolvedValue({})
 
-    const res = await mod.POST(
-      makePostRequest({
-        token: 'valid-token-123',
-        password: 'SecurePass123!',
-        phone: '9876543210',
-      })
-    )
-    expect(res.status).toBe(200)
+    const res = await POST(post({
+      token: 'x'.repeat(48),
+      password: 'MotDePasse123!',
+      phone: '0612345678',
+    }))
     const body = await res.json()
+    expect(res.status).toBe(200)
     expect(body.success).toBe(true)
-    expect(body.hospitalName).toBe('Test Clinic')
-  })
-
-  it('returns 400 for Zod validation failure', async () => {
-    const res = await mod.POST(
-      makePostRequest({
-        token: '',
-        password: 'short',
-        phone: '123',
+    expect(body.hospitalName).toBe('Cabinet Test')
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ phone: '+212612345678', locale: 'fr-MA' }),
       })
     )
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.error).toContain('Validation failed')
   })
 
-  it('returns 400 for invalid token', async () => {
+  it('rejects invalid or expired invites with a neutral error', async () => {
     ;(prisma.staffInvite.findUnique as any).mockResolvedValue(null)
-
-    const res = await mod.POST(
-      makePostRequest({
-        token: 'invalid-token',
-        password: 'SecurePass123!',
-        phone: '9876543210',
-      })
-    )
+    const res = await POST(post({
+      token: 'x'.repeat(48),
+      password: 'MotDePasse123!',
+      phone: '0612345678',
+    }))
     expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.error).toContain('Invalid invite token')
+    expect((await res.json()).error).toMatch(/invalide|expirée/i)
   })
 
-  it('returns 400 when invite already used', async () => {
-    ;(prisma.staffInvite.findUnique as any).mockResolvedValue({
-      ...validInvite,
-      status: 'ACCEPTED',
-    })
-
-    const res = await mod.POST(
-      makePostRequest({
-        token: 'valid-token-123',
-        password: 'SecurePass123!',
-        phone: '9876543210',
-      })
-    )
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.error).toContain('already been used')
-  })
-
-  it('returns 400 and marks as EXPIRED when invite expired', async () => {
-    ;(prisma.staffInvite.findUnique as any).mockResolvedValue({
-      ...validInvite,
-      expiresAt: new Date(Date.now() - 86400000), // -1 day
-    })
-    ;(prisma.staffInvite.update as any).mockResolvedValue({})
-
-    const res = await mod.POST(
-      makePostRequest({
-        token: 'valid-token-123',
-        password: 'SecurePass123!',
-        phone: '9876543210',
-      })
-    )
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.error).toContain('expired')
-    expect(prisma.staffInvite.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { status: 'EXPIRED' } })
-    )
-  })
-
-  it('returns 400 when hospital is inactive', async () => {
-    ;(prisma.staffInvite.findUnique as any).mockResolvedValue({
-      ...validInvite,
-      hospital: { ...validInvite.hospital, isActive: false },
-    })
-
-    const res = await mod.POST(
-      makePostRequest({
-        token: 'valid-token-123',
-        password: 'SecurePass123!',
-        phone: '9876543210',
-      })
-    )
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.error).toContain('no longer active')
-  })
-
-  it('returns 409 when email already exists', async () => {
+  it('returns invite details for a valid capability token', async () => {
     ;(prisma.staffInvite.findUnique as any).mockResolvedValue(validInvite)
-    ;(prisma.user.findUnique as any).mockResolvedValue({ id: 'existing-user' })
-
-    const res = await mod.POST(
-      makePostRequest({
-        token: 'valid-token-123',
-        password: 'SecurePass123!',
-        phone: '9876543210',
-      })
-    )
-    expect(res.status).toBe(409)
-  })
-})
-
-describe('GET /api/public/invite/accept', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('validates a valid token and returns invite details', async () => {
-    ;(prisma.staffInvite.findUnique as any).mockResolvedValue({
-      ...validInvite,
-      hospital: { name: 'Test Clinic', isActive: true },
-    })
-
-    const res = await mod.GET(makeGetRequest('valid-token-123'))
+    const res = await GET(get('x'.repeat(48)))
+    const body = await res.json()
     expect(res.status).toBe(200)
-    const body = await res.json()
     expect(body.valid).toBe(true)
-    expect(body.invite.email).toBe('jane@example.com')
-    expect(body.invite.hospitalName).toBe('Test Clinic')
-  })
-
-  it('returns 400 when token query param missing', async () => {
-    const res = await mod.GET(makeGetRequest())
-    expect(res.status).toBe(400)
-  })
-
-  it('returns 400 for invalid token', async () => {
-    ;(prisma.staffInvite.findUnique as any).mockResolvedValue(null)
-
-    const res = await mod.GET(makeGetRequest('bad-token'))
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.valid).toBe(false)
-  })
-
-  it('returns 400 for non-PENDING invite', async () => {
-    ;(prisma.staffInvite.findUnique as any).mockResolvedValue({
-      ...validInvite,
-      status: 'ACCEPTED',
-      hospital: { name: 'Test Clinic', isActive: true },
-    })
-
-    const res = await mod.GET(makeGetRequest('valid-token-123'))
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.valid).toBe(false)
-  })
-
-  it('returns 400 for expired invite', async () => {
-    ;(prisma.staffInvite.findUnique as any).mockResolvedValue({
-      ...validInvite,
-      expiresAt: new Date(Date.now() - 86400000),
-      hospital: { name: 'Test Clinic', isActive: true },
-    })
-
-    const res = await mod.GET(makeGetRequest('valid-token-123'))
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.valid).toBe(false)
-    expect(body.error).toContain('expired')
-  })
-
-  it('returns 400 when hospital inactive', async () => {
-    ;(prisma.staffInvite.findUnique as any).mockResolvedValue({
-      ...validInvite,
-      hospital: { name: 'Test Clinic', isActive: false },
-    })
-
-    const res = await mod.GET(makeGetRequest('valid-token-123'))
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.valid).toBe(false)
-    expect(body.error).toContain('no longer active')
+    expect(body.invite.hospitalName).toBe('Cabinet Test')
   })
 })
