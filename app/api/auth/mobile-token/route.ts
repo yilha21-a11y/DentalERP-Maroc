@@ -48,7 +48,12 @@ export async function POST(req: NextRequest) {
       include: { staff: true, hospital: true },
     })
 
-    if (!user || !user.isActive || !user.hospital?.isActive) {
+    if (
+      !user ||
+      !user.isActive ||
+      !user.hospital?.isActive ||
+      user.hospital.emailVerificationToken !== null
+    ) {
       return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 })
     }
 
