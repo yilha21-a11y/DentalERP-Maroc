@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { generateOTP, hashOTP } from '@/lib/patient-auth'
 import { normalizeMoroccoPhone, sendWhatsAppTemplate } from '@/lib/services/whatsapp.service'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 const requestSchema = z.object({
   phone: z.string().min(8).max(20),
@@ -37,6 +38,18 @@ export async function POST(req: NextRequest) {
 
     const { phone, hospitalSlug } = parsed.data
     const normalizedPhone = canonicalPhone(phone)
+
+    const ipRate = await checkRateLimit(
+      `patient-otp-ip:${getClientIp(req)}`,
+      20,
+      10 * 60 * 1000
+    )
+    if (!ipRate.allowed) {
+      return NextResponse.json(genericResponse, {
+        status: 200,
+        headers: { 'Retry-After': String(ipRate.retryAfterSeconds) },
+      })
+    }
     const otpTemplate = process.env.WHATSAPP_TEMPLATE_PATIENT_OTP
     const deliveryConfigured =
       Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID) &&
