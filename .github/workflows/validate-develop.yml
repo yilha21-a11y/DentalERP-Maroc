@@ -34,4 +34,6 @@ jobs:
         env:
           DATABASE_URL: mysql://user:password@localhost:3306/dentalerp
           NEXTAUTH_SECRET: validation-secret-validation-secret
+          PATIENT_JWT_SECRET: validation-patient-secret-validation-patient-secret
+          WAITING_ROOM_DISPLAY_SECRET: validation-waiting-room-secret-validation-waiting-room
           NEXTAUTH_URL: http://localhost:3000
