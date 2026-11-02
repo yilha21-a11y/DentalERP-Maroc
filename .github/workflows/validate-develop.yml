@@ -27,6 +27,8 @@ jobs:
           DATABASE_URL: mysql://user:password@localhost:3306/dentalerp
       - name: Type check
         run: npx tsc --noEmit
+      - name: Security regression tests
+        run: npx vitest run tests/unit/patient-auth.test.ts tests/unit/cron-auth.test.ts
       - name: Build
         run: npm run build
         env:
