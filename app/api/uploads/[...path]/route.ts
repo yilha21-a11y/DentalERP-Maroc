@@ -41,7 +41,8 @@ export async function GET(
       headers: {
         'Content-Type': object.contentType,
         'Content-Length': String(object.size),
-        'Cache-Control': 'private, max-age=3600',
+        'Cache-Control': 'private, no-store',
+        'X-Content-Type-Options': 'nosniff',
       },
     });
   } catch (error: any) {
@@ -52,9 +53,6 @@ export async function GET(
       );
     }
     console.error('Error serving file:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to serve file' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Impossible de servir le fichier' }, { status: 500 });
   }
 }
