@@ -4,6 +4,7 @@ import { requireAuthAndRole } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { parseFile } from '@/lib/import/parsers'
 import { ENTITY_SCHEMAS } from '@/lib/import/schema-definitions'
+import { validateImportSignature } from '@/lib/file-security'
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
 const ALLOWED_EXTENSIONS = ['csv', 'xlsx', 'xls', 'pdf']
@@ -43,20 +44,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File exceeds 20MB limit' }, { status: 400 })
     }
 
-    // Save the upload. The extension is already whitelisted above, and the
-    // stem is a UUID, so nothing from the uploaded filename reaches the key.
+    const buffer = Buffer.from(await file.arrayBuffer())
+    if (!validateImportSignature(buffer, ext)) {
+      return NextResponse.json({ error: 'Le contenu du fichier ne correspond pas à son format.' }, { status: 400 })
+    }
+
+    // The stored name is generated server-side; the original filename never reaches the key.
     const fileId = crypto.randomUUID()
     const fileName = `${fileId}.${ext}`
     const key = buildStorageKey(hospitalId, 'imports', fileName)
-    const buffer = Buffer.from(await file.arrayBuffer())
-    await getStorage().put(key, buffer, { contentType: file.type })
+    await getStorage().put(key, buffer, { contentType: file.type || 'application/octet-stream' })
 
     // Parse the file
     let parsed
     try {
       parsed = await parseFile(buffer, ext)
     } catch (parseErr: any) {
-      return NextResponse.json({ error: parseErr.message }, { status: 400 })
+      return NextResponse.json({ error: 'Fichier invalide ou illisible' }, { status: 400 })
     }
 
     if (parsed.columns.length === 0) {
@@ -100,6 +104,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (err: any) {
     console.error('Data import upload error:', err)
-    return NextResponse.json({ error: err.message || 'Upload failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec de l’import du fichier' }, { status: 500 })
   }
 }
