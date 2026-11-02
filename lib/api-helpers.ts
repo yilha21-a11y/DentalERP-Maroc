@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { jwtVerify } from 'jose'
@@ -15,17 +16,37 @@ async function verifyMobileToken(): Promise<any | null> {
     if (!authHeader?.startsWith('Bearer ')) return null
 
     const token = authHeader.slice(7)
-    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
-    const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] })
+    const configuredSecret = process.env.NEXTAUTH_SECRET
+    if (!configuredSecret || configuredSecret.length < 32) return null
+
+    const secret = new TextEncoder().encode(configuredSecret)
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ['HS256'],
+      issuer: 'dentalerp-maroc',
+      audience: 'mobile-api',
+    })
+
+    if (typeof payload.sub !== 'string' || typeof payload.hospitalId !== 'string') return null
+
+    const user = await prisma.user.findFirst({
+      where: {
+        id: payload.sub,
+        hospitalId: payload.hospitalId,
+        isActive: true,
+        hospital: { isActive: true },
+      },
+      include: { staff: true },
+    })
+    if (!user) return null
 
     return {
-      id: payload.sub,
-      email: payload.email,
-      name: payload.name,
-      role: payload.role,
-      staffId: payload.staffId,
-      hospitalId: payload.hospitalId,
-      isHospitalAdmin: payload.isHospitalAdmin,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      staffId: user.staff?.id,
+      hospitalId: user.hospitalId,
+      isHospitalAdmin: user.isHospitalAdmin,
     }
   } catch {
     return null
@@ -228,10 +249,10 @@ export async function generateUniqueSlug(name: string): Promise<string> {
  * Generate a random token for email verification or password reset
  */
 export function generateToken(length = 32): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let token = ''
-  for (let i = 0; i < length; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length))
+  if (!Number.isInteger(length) || length < 16 || length > 256) {
+    throw new Error('Token length must be an integer between 16 and 256')
   }
-  return token
+  return randomBytes(Math.ceil(length * 0.75))
+    .toString('base64url')
+    .slice(0, length)
 }
