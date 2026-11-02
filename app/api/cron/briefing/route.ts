@@ -6,15 +6,13 @@ import { requireCronAuth } from '@/lib/cron-auth'
 
 /**
  * GET /api/cron/briefing
- * Scheduled: daily 07:30 IST
+ * Scheduled: daily 07:30 (Africa/Casablanca)
  * Generates morning briefings for all hospitals and creates notifications for ADMIN users.
  * Secured via CRON_SECRET header.
  */
 export async function GET(req: Request) {
-  const secret = req.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireCronAuth(req)
+  if (authError) return authError
 
   const hospitals = await prisma.hospital.findMany({
     where: { isActive: true, onboardingCompleted: true },
