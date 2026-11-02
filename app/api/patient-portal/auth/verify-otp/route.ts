@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
         lastName: true,
         phone: true,
         email: true,
+        portalAuthVersion: true,
       },
     })
 
@@ -97,6 +98,7 @@ export async function POST(req: NextRequest) {
       patientId: patient.id,
       hospitalId: patient.hospitalId,
       phone: patient.phone,
+      authVersion: patient.portalAuthVersion,
     })
 
     const response = NextResponse.json({
