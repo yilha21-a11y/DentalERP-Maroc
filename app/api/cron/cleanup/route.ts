@@ -6,7 +6,7 @@
  * Removes expired AIInsight records.
  *
  * Secured via CRON_SECRET env var (Bearer token).
- * Schedule: daily at 2:00 AM IST.
+ * Schedule: daily according to the deployment scheduler.
  *
  * curl -X POST https://<host>/api/cron/cleanup \
  *   -H "Authorization: Bearer <CRON_SECRET>"
@@ -14,14 +14,13 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireCronAuth } from '@/lib/cron-auth'
 
 const RETENTION_DAYS = 90
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireCronAuth(req)
+  if (authError) return authError
 
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000)
 
