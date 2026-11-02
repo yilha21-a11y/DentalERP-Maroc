@@ -31,7 +31,7 @@ type InviteData = {
   email: string
   name: string
   role: string
-  hospitalNom : string
+  hospitalName : string
   expiresAt: string
 }
 
