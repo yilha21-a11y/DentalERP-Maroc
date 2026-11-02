@@ -1,37 +1,47 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 const verifySchema = z.object({
-  token: z.string().min(1, 'Token is required'),
+  token: z.string().min(32).max(256),
 })
+
+async function rateLimit(request: Request) {
+  return checkRateLimit(
+    `verify-email:${getClientIp(request)}`,
+    30,
+    15 * 60 * 1000
+  )
+}
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const validated = verifySchema.safeParse(body)
-
-    if (!validated.success) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
+    const rate = await rateLimit(request)
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de tentatives. Réessayez plus tard.' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } }
+      )
     }
 
-    const { token } = validated.data
+    const validated = verifySchema.safeParse(await request.json())
+    if (!validated.success) {
+      return NextResponse.json({ error: 'Jeton invalide' }, { status: 400 })
+    }
 
-    // Find hospital with this verification token
     const hospital = await prisma.hospital.findFirst({
       where: {
-        emailVerificationToken: token,
-        emailVerificationExpiry: {
-          gt: new Date(),
-        },
+        emailVerificationToken: validated.data.token,
+        emailVerificationExpiry: { gt: new Date() },
       },
+      select: { id: true, slug: true },
     })
 
     if (!hospital) {
-      return NextResponse.json({ error: 'Invalid or expired verification token' }, { status: 400 })
+      return NextResponse.json({ error: 'Jeton invalide ou expiré' }, { status: 400 })
     }
 
-    // Mark email as verified
     await prisma.hospital.update({
       where: { id: hospital.id },
       data: {
@@ -42,53 +52,49 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Email verified successfully. You can now log in.',
+      message: 'Adresse e-mail vérifiée. Vous pouvez maintenant vous connecter.',
       hospitalSlug: hospital.slug,
     })
   } catch (error) {
     console.error('Email verification error:', error)
-    return NextResponse.json(
-      { error: 'An error occurred during verification. Please try again.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Vérification temporairement indisponible' }, { status: 500 })
   }
 }
 
-// GET endpoint to check token validity
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const token = searchParams.get('token')
+    const rate = await rateLimit(request)
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { valid: false, error: 'Trop de tentatives' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } }
+      )
+    }
 
-    if (!token) {
-      return NextResponse.json({ error: 'Token is required' }, { status: 400 })
+    const token = new URL(request.url).searchParams.get('token')
+    const validated = verifySchema.safeParse({ token })
+    if (!validated.success) {
+      return NextResponse.json({ valid: false, error: 'Jeton invalide' }, { status: 400 })
     }
 
     const hospital = await prisma.hospital.findFirst({
       where: {
-        emailVerificationToken: token,
-        emailVerificationExpiry: {
-          gt: new Date(),
-        },
+        emailVerificationToken: validated.data.token,
+        emailVerificationExpiry: { gt: new Date() },
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
+      select: { name: true },
     })
 
     if (!hospital) {
-      return NextResponse.json({ valid: false, error: 'Invalid or expired token' }, { status: 400 })
+      return NextResponse.json({ valid: false, error: 'Jeton invalide ou expiré' }, { status: 400 })
     }
 
     return NextResponse.json({
       valid: true,
       hospitalName: hospital.name,
-      email: hospital.email,
     })
   } catch (error) {
     console.error('Token validation error:', error)
-    return NextResponse.json({ error: 'An error occurred. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Vérification temporairement indisponible' }, { status: 500 })
   }
 }
