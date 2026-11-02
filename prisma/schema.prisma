@@ -31,7 +31,7 @@ model Hospital {
   website             String?
   tagline             String?
 
-  // Localization. Defaults keep existing clinics on Indian formatting.
+  // Localisation par défaut pour DentalERP Maroc.
   // `country` will select the tax provider — see docs/LOCALIZATION.md.
   locale              String    @default("fr-MA")
   country             String    @default("MA")
@@ -64,6 +64,7 @@ model Hospital {
   staff               Staff[]
   patients            Patient[]
   appointments        Appointment[]
+  waitingRoomEntries   WaitingRoomEntry[]
   treatments          Treatment[]
   treatmentPlans      TreatmentPlan[]
   dentalChartEntries  DentalChartEntry[]
@@ -207,7 +208,7 @@ model User {
 
   // Personal locale override, BCP 47. NULL means "inherit from the clinic" and
   // is deliberately NOT defaulted: a default would be indistinguishable from an
-  // explicit choice of en-IN, so a clinic changing its own locale would
+  // explicit locale choice, so a clinic changing its own locale would
   // silently fail to propagate to every staff member who never expressed a
   // preference. See docs/LOCALIZATION.md.
   locale          String?
@@ -614,6 +615,7 @@ model Appointment {
   doctor          Staff             @relation("DoctorAppointments", fields: [doctorId], references: [id])
   treatments      Treatment[]
   reminders       AppointmentReminder[]
+  waitingRoomEntry WaitingRoomEntry?
   videoConsultation VideoConsultation?
 
   @@unique([hospitalId, appointmentNo])
@@ -637,6 +639,33 @@ model AppointmentReminder {
 
   @@index([scheduledFor])
   @@index([status])
+}
+
+model WaitingRoomEntry {
+  id            String            @id @default(cuid())
+  hospitalId    String
+  appointmentId String            @unique
+  status        WaitingRoomStatus @default(WAITING)
+  roomLabel     String?           @db.VarChar(100)
+  arrivedAt     DateTime          @default(now())
+  calledAt      DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  updatedAt     DateTime          @updatedAt
+
+  hospital      Hospital          @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  appointment   Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([hospitalId, status])
+  @@index([arrivedAt])
+}
+
+enum WaitingRoomStatus {
+  WAITING
+  CALLED
+  IN_CONSULTATION
+  COMPLETED
+  CANCELLED
 }
 
 enum AppointmentType {
