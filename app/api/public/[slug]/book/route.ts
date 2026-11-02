@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { requirePatientAuth } from '@/lib/patient-auth'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 const bookingSchema = z.object({
   // Kept optional for backward-compatible clients; identity comes from the signed patient cookie.
@@ -19,6 +20,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     const auth = await requirePatientAuth(req)
     if (auth.error || !auth.patient) {
       return auth.error || NextResponse.json({ error: 'Authentification patient requise' }, { status: 401 })
+    }
+
+    const rate = await checkRateLimit(
+      `patient-booking:${auth.patient.id}:${getClientIp(req)}`,
+      20,
+      10 * 60 * 1000
+    )
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de demandes. Réessayez plus tard.' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } }
+      )
     }
 
     const parsed = bookingSchema.safeParse(await req.json())
