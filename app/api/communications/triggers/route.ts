@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { communicationTriggersService } from '@/lib/services/communication-triggers.service'
+import { requireCronAuth } from '@/lib/cron-auth'
 
 // POST /api/communications/triggers - Run communication triggers
 // This endpoint should be called by a cron job (e.g., every hour)
 export async function POST(req: NextRequest) {
   try {
-    // Verify cron secret to prevent unauthorized access
-    const authHeader = req.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET || 'your-cron-secret-key'
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authError = requireCronAuth(req)
+    if (authError) return authError
 
     // Run all automated communication triggers
     await communicationTriggersService.runAllTriggers()
