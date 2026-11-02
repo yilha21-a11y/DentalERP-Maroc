@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { sendWhatsAppTemplate } from '@/lib/services/whatsapp.service'
+import { requireCronAuth } from '@/lib/cron-auth'
 
 export async function GET(req: Request) {
   const secret = req.headers.get('Authorization')?.replace('Bearer ', '')
