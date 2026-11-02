@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
 
 /**
@@ -8,10 +9,8 @@ import { prisma } from '@/lib/prisma'
  * compares with current stock, and creates alerts for items that will run out.
  */
 export async function GET(req: Request) {
-  const secret = req.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = requireCronAuth(req)
+  if (unauthorized) return unauthorized
 
   const now = new Date()
   const in14Days = new Date(now)

@@ -1,22 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { createHmac, randomInt, timingSafeEqual } from 'crypto'
 import { SignJWT, jwtVerify } from 'jose'
 import { prisma } from './prisma'
 
 const COOKIE_NAME = 'patient-portal-token'
-const JWT_SECRET = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || 'patient-portal-secret')
+const TOKEN_ISSUER = 'dentalerp-maroc'
+const TOKEN_AUDIENCE = 'dentalerp-patient-portal'
+/** Durée de vie du jeton portail (courte ; révocable via portalSessionVersion). */
+const TOKEN_TTL_SECONDS = 4 * 60 * 60
+const MIN_SECRET_LENGTH = 32
+
+/**
+ * Secret dédié au portail patient. Fail-closed : aucune valeur de secours,
+ * erreur si absent ou trop court. Lu à la demande pour ne pas casser
+ * `next build` ; l'erreur est levée dès la première requête au portail.
+ */
+export function getPatientPortalSecret(): Uint8Array {
+  const secret = process.env.PATIENT_PORTAL_JWT_SECRET
+  if (!secret || secret.length < MIN_SECRET_LENGTH) {
+    throw new Error(
+      'PATIENT_PORTAL_JWT_SECRET doit être défini et contenir au moins ' +
+        MIN_SECRET_LENGTH +
+        ' caractères'
+    )
+  }
+  return new TextEncoder().encode(secret)
+}
 
 interface PatientTokenPayload {
   patientId: string
   hospitalId: string
   phone: string
+  /** Version de session (révocation) */
+  sv: number
 }
 
 /**
- * Generate a 6-digit OTP
+ * Generate a 6-digit OTP (CSPRNG)
  */
 export function generateOTP(): string {
-  return String(Math.floor(100000 + Math.random() * 900000))
+  return String(randomInt(100000, 1000000))
+}
+
+/**
+ * Empreinte HMAC-SHA256 d'un OTP, liée à la clinique et au numéro.
+ * Seule cette empreinte est stockée en base.
+ */
+export function hashOTP(hospitalId: string, phone: string, otp: string): string {
+  return createHmac('sha256', getPatientPortalSecret())
+    .update(hospitalId + ':' + phone + ':' + otp)
+    .digest('hex')
+}
+
+/** Comparaison en temps constant de deux empreintes hexadécimales. */
+export function safeEqualHex(a: string, b: string): boolean {
+  const ba = Buffer.from(a, 'hex')
+  const bb = Buffer.from(b, 'hex')
+  if (ba.length === 0 || ba.length !== bb.length) return false
+  return timingSafeEqual(ba, bb)
 }
 
 /**
@@ -25,21 +67,37 @@ export function generateOTP(): string {
 export async function createPatientToken(payload: PatientTokenPayload): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
+    .setIssuer(TOKEN_ISSUER)
+    .setAudience(TOKEN_AUDIENCE)
     .setIssuedAt()
-    .setExpirationTime('7d')
-    .sign(JWT_SECRET)
+    .setExpirationTime(TOKEN_TTL_SECONDS + 's')
+    .sign(getPatientPortalSecret())
 }
 
 /**
  * Verify and decode patient JWT
  */
-async function verifyPatientToken(token: string): Promise<PatientTokenPayload | null> {
+export async function verifyPatientToken(token: string): Promise<PatientTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET)
+    const { payload } = await jwtVerify(token, getPatientPortalSecret(), {
+      algorithms: ['HS256'],
+      issuer: TOKEN_ISSUER,
+      audience: TOKEN_AUDIENCE,
+    })
     return payload as unknown as PatientTokenPayload
   } catch {
     return null
   }
+}
+
+/**
+ * Révoque toutes les sessions portail d'un patient.
+ */
+export async function revokePatientSessions(patientId: string, hospitalId: string) {
+  await prisma.patient.updateMany({
+    where: { id: patientId, hospitalId },
+    data: { portalSessionVersion: { increment: 1 } },
+  })
 }
 
 /**
@@ -76,12 +134,16 @@ export async function getAuthenticatedPatient(req?: NextRequest) {
       lastName: true,
       phone: true,
       email: true,
+      portalSessionVersion: true,
     },
   })
 
   if (!patient) return null
+  // Session révoquée (déconnexion / changement de version)
+  if (patient.portalSessionVersion !== payload.sv) return null
 
-  return patient
+  const { portalSessionVersion: _sessionVersion, ...safePatient } = patient
+  return safePatient
 }
 
 /**
@@ -108,7 +170,7 @@ export function setPatientCookie(response: NextResponse, token: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: TOKEN_TTL_SECONDS,
     path: '/',
   })
   return response

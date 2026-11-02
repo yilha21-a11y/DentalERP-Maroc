@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsAppTemplate } from '@/lib/services/whatsapp.service'
 
@@ -10,10 +11,8 @@ function appointmentDateTime(date: Date, time: string) {
 }
 
 export async function GET(req: Request) {
-  const secret = req.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-  }
+  const unauthorized = requireCronAuth(req)
+  if (unauthorized) return unauthorized
 
   const now = new Date()
   const in26Hours = new Date(now.getTime() + 26 * 60 * 60 * 1000)

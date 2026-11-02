@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
 
 /**
@@ -16,10 +17,8 @@ import { prisma } from '@/lib/prisma'
  *  - PAYMENT_OVERDUE: invoices overdue by X days
  */
 export async function POST(req: Request) {
-  const secret = req.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = requireCronAuth(req)
+  if (unauthorized) return unauthorized
 
   const automations = await prisma.marketingAutomation.findMany({
     where: { isActive: true },

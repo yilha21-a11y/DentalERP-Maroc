@@ -12,7 +12,8 @@ import { prisma } from '@/lib/prisma'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const CRON_SECRET = process.env.CRON_SECRET || 'your-cron-secret-key'
+const CRON_SECRET = 'test-cron-secret-value'
+process.env.CRON_SECRET = CRON_SECRET
 
 function makeReq(headers: Record<string, string> = {}): Request {
   return new Request('http://localhost/api/cron/automations', {
@@ -31,6 +32,15 @@ describe('POST /api/cron/automations', () => {
   it('returns 401 without valid cron secret', async () => {
     const res = await automationsPOST(makeReq({ Authorization: 'Bearer wrong-secret' }))
     expect(res.status).toBe(401)
+  })
+
+  it('returns 401 when CRON_SECRET is unset or empty (fail-closed)', async () => {
+    process.env.CRON_SECRET = ''
+    const res = await automationsPOST(makeReq({ Authorization: 'Bearer ' }))
+    expect(res.status).toBe(401)
+    const res2 = await automationsPOST(makeReq({ Authorization: 'Bearer undefined' }))
+    expect(res2.status).toBe(401)
+    process.env.CRON_SECRET = CRON_SECRET
   })
 
   it('returns 401 without authorization header', async () => {

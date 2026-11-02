@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { secureRandomInt } from '@/lib/security/random'
 import {
   formatCurrency as baseFormatCurrency,
   formatDate as baseFormatDate,
@@ -38,7 +39,7 @@ export function generatePatientId(): string {
   const date = new Date()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const year = String(date.getFullYear()).slice(-2)
-  const random = String(Math.floor(Math.random() * 9999)).padStart(4, '0')
+  const random = String(secureRandomInt(10000)).padStart(4, '0')
   return `PAT${year}${month}${random}`
 }
 
@@ -46,7 +47,7 @@ export function generateInvoiceNo(): string {
   const date = new Date()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const year = String(date.getFullYear())
-  const random = String(Math.floor(Math.random() * 9999)).padStart(4, '0')
+  const random = String(secureRandomInt(10000)).padStart(4, '0')
   return `INV-${year}${month}-${random}`
 }
 

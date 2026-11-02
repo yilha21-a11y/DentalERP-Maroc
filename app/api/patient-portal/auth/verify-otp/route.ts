@@ -1,80 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createPatientToken, setPatientCookie } from '@/lib/patient-auth'
+import { createPatientToken, hashOTP, safeEqualHex, setPatientCookie } from '@/lib/patient-auth'
+import { moroccoPhoneVariants, normalizeMoroccoE164 } from '@/lib/phone'
+import { getClientIp, rateLimit, tooManyRequests } from '@/lib/security/rate-limit'
+
+const MAX_ATTEMPTS = 3
+
+function invalidCode() {
+  return NextResponse.json({ error: 'Code invalide ou expiré.' }, { status: 400 })
+}
 
 /**
- * POST: Verify OTP and return JWT in httpOnly cookie.
+ * POST: Vérifie l'OTP et pose le JWT dans un cookie httpOnly.
  * Body: { phone, otp, hospitalSlug }
  */
 export async function POST(req: NextRequest) {
   try {
-    const { phone, otp, hospitalSlug } = (await req.json()) as {
-      phone: string
-      otp: string
-      hospitalSlug: string
+    const ip = getClientIp(req)
+    const ipLimit = rateLimit('otp-verify-ip:' + ip, 30, 10 * 60 * 1000)
+    if (!ipLimit.allowed) return tooManyRequests(ipLimit.retryAfterSeconds)
+
+    let body: { phone?: unknown; otp?: unknown; hospitalSlug?: unknown }
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Requête invalide' }, { status: 400 })
+    }
+    if (
+      typeof body.phone !== 'string' ||
+      typeof body.otp !== 'string' ||
+      typeof body.hospitalSlug !== 'string' ||
+      !/^\d{6}$/.test(body.otp)
+    ) {
+      return invalidCode()
     }
 
-    if (!phone || !otp || !hospitalSlug) {
-      return NextResponse.json(
-        { error: 'Phone, OTP, and clinic identifier are required' },
-        { status: 400 }
-      )
-    }
+    const phone = normalizeMoroccoE164(body.phone)
+    if (!phone) return invalidCode()
 
-    // Find hospital
     const hospital = await prisma.hospital.findUnique({
-      where: { slug: hospitalSlug },
-      select: { id: true, name: true },
+      where: { slug: body.hospitalSlug },
+      select: { id: true },
+    })
+    if (!hospital) return invalidCode()
+
+    const submittedHash = hashOTP(hospital.id, phone, body.otp)
+
+    // Vérification + consommation atomiques.
+    const outcome = await prisma.$transaction(async (tx) => {
+      const record = await tx.patientOTP.findFirst({
+        where: {
+          hospitalId: hospital.id,
+          phone,
+          verified: false,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+      if (!record || record.attempts >= MAX_ATTEMPTS) return 'invalid' as const
+
+      if (!safeEqualHex(record.otpHash, submittedHash)) {
+        await tx.patientOTP.update({
+          where: { id: record.id },
+          data: { attempts: { increment: 1 } },
+        })
+        return 'invalid' as const
+      }
+
+      // Consommation conditionnelle : un seul appel concurrent peut réussir.
+      const consumed = await tx.patientOTP.updateMany({
+        where: {
+          id: record.id,
+          verified: false,
+          attempts: { lt: MAX_ATTEMPTS },
+          expiresAt: { gt: new Date() },
+        },
+        data: { verified: true },
+      })
+      return consumed.count === 1 ? ('ok' as const) : ('invalid' as const)
     })
 
-    if (!hospital) {
-      return NextResponse.json({ error: 'Clinic not found' }, { status: 404 })
-    }
+    if (outcome !== 'ok') return invalidCode()
 
-    // Find the most recent unverified OTP for this phone
-    const otpRecord = await prisma.patientOTP.findFirst({
+    const patient = await prisma.patient.findFirst({
       where: {
         hospitalId: hospital.id,
-        phone,
-        verified: false,
-        expiresAt: { gt: new Date() },
+        phone: { in: moroccoPhoneVariants(phone) },
+        isActive: true,
       },
-      orderBy: { createdAt: 'desc' },
-    })
-
-    if (!otpRecord) {
-      return NextResponse.json(
-        { error: 'OTP expired or not found. Please request a new one.' },
-        { status: 400 }
-      )
-    }
-
-    // Check attempts (max 3)
-    if (otpRecord.attempts >= 3) {
-      return NextResponse.json(
-        { error: 'Too many failed attempts. Please request a new OTP.' },
-        { status: 429 }
-      )
-    }
-
-    // Verify OTP
-    if (otpRecord.otp !== otp) {
-      await prisma.patientOTP.update({
-        where: { id: otpRecord.id },
-        data: { attempts: { increment: 1 } },
-      })
-      return NextResponse.json({ error: 'Invalid OTP. Please try again.' }, { status: 400 })
-    }
-
-    // Mark OTP as verified
-    await prisma.patientOTP.update({
-      where: { id: otpRecord.id },
-      data: { verified: true },
-    })
-
-    // Find the patient
-    const patient = await prisma.patient.findFirst({
-      where: { hospitalId: hospital.id, phone, isActive: true },
       select: {
         id: true,
         hospitalId: true,
@@ -83,18 +96,16 @@ export async function POST(req: NextRequest) {
         lastName: true,
         phone: true,
         email: true,
+        portalSessionVersion: true,
       },
     })
+    if (!patient) return invalidCode()
 
-    if (!patient) {
-      return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
-    }
-
-    // Generate JWT
     const token = await createPatientToken({
       patientId: patient.id,
       hospitalId: patient.hospitalId,
       phone: patient.phone,
+      sv: patient.portalSessionVersion,
     })
 
     const response = NextResponse.json({
@@ -102,7 +113,7 @@ export async function POST(req: NextRequest) {
       patient: {
         id: patient.id,
         patientId: patient.patientId,
-        name: `${patient.firstName} ${patient.lastName}`,
+        name: patient.firstName + ' ' + patient.lastName,
         phone: patient.phone,
         email: patient.email,
       },
@@ -110,7 +121,7 @@ export async function POST(req: NextRequest) {
 
     return setPatientCookie(response, token)
   } catch (err: unknown) {
-    console.error('Verify OTP error:', err)
-    return NextResponse.json({ error: 'Verification failed' }, { status: 500 })
+    console.error('Verify OTP error:', err instanceof Error ? err.message : 'unknown')
+    return NextResponse.json({ error: 'Vérification impossible.' }, { status: 500 })
   }
 }

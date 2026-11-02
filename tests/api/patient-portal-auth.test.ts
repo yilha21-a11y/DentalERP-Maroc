@@ -8,10 +8,25 @@ vi.mock('@/lib/prisma', () => import('../__mocks__/prisma'))
 
 vi.mock('@/lib/patient-auth', () => ({
   generateOTP: vi.fn(() => '123456'),
+  hashOTP: vi.fn((_h, _p, otp) => 'hash-' + otp),
+  safeEqualHex: vi.fn((a, b) => a === b),
   createPatientToken: vi.fn(() => Promise.resolve('mock-jwt-token')),
+  verifyPatientToken: vi.fn(() => Promise.resolve(null)),
+  revokePatientSessions: vi.fn(),
   setPatientCookie: vi.fn((response) => response),
   clearPatientCookie: vi.fn((response) => response),
   requirePatientAuth: vi.fn(),
+  COOKIE_NAME: 'patient-portal-token',
+}))
+
+const sendMock = vi.fn()
+let senderConfigured = true
+vi.mock('@/lib/services/otp-sender', () => ({
+  getOtpSender: () => ({
+    name: 'test',
+    isConfigured: () => senderConfigured,
+    send: sendMock,
+  }),
 }))
 
 // ── Imports (after mocks) ────────────────────────────────────────────────────
@@ -25,137 +40,112 @@ import { prisma } from '@/lib/prisma'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+let ipCounter = 0
 function makeReq(path: string, method = 'POST', body?: any): NextRequest {
   const url = `http://localhost${path}`
-  const init: any = { method }
+  // IP distincte par requête pour ne pas déclencher la limite mémoire
+  const init: any = { method, headers: { 'x-forwarded-for': `10.0.0.${++ipCounter}` } }
   if (body) {
     init.body = JSON.stringify(body)
-    init.headers = { 'Content-Type': 'application/json' }
+    init.headers['Content-Type'] = 'application/json'
   }
   return new NextRequest(url, init)
 }
+
+const PHONE = '0612345678'
+const E164 = '+212612345678'
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 1. POST /api/patient-portal/auth/send-otp
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('POST /api/patient-portal/auth/send-otp', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    senderConfigured = true
+    vi.mocked(prisma.patientOTP.count).mockResolvedValue(0)
+  })
 
   it('returns 400 when phone or hospitalSlug missing', async () => {
-    const res = await sendOtpPOST(
-      makeReq('/api/patient-portal/auth/send-otp', 'POST', { phone: '9876543210' })
-    )
-    const body = await res.json()
-
+    const res = await sendOtpPOST(makeReq('/api/patient-portal/auth/send-otp', 'POST', { phone: PHONE }))
     expect(res.status).toBe(400)
-    expect(body.error).toContain('required')
   })
 
-  it('returns 404 when hospital not found', async () => {
+  it('returns 503 when no OTP provider is configured (fail cleanly)', async () => {
+    senderConfigured = false
+    const res = await sendOtpPOST(
+      makeReq('/api/patient-portal/auth/send-otp', 'POST', { phone: PHONE, hospitalSlug: 'c' })
+    )
+    expect(res.status).toBe(503)
+    expect(prisma.patientOTP.create).not.toHaveBeenCalled()
+  })
+
+  it('returns a neutral response when the clinic does not exist', async () => {
     vi.mocked(prisma.hospital.findUnique).mockResolvedValue(null)
-
     const res = await sendOtpPOST(
-      makeReq('/api/patient-portal/auth/send-otp', 'POST', {
-        phone: '9876543210',
-        hospitalSlug: 'nonexistent-clinic',
-      })
+      makeReq('/api/patient-portal/auth/send-otp', 'POST', { phone: PHONE, hospitalSlug: 'nope' })
     )
     const body = await res.json()
-
-    expect(res.status).toBe(404)
-    expect(body.error).toContain('Clinic not found')
-  })
-
-  it('returns 403 when portal disabled', async () => {
-    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({
-      id: 'h1',
-      name: 'Test Clinic',
-      patientPortalEnabled: false,
-    } as any)
-
-    const res = await sendOtpPOST(
-      makeReq('/api/patient-portal/auth/send-otp', 'POST', {
-        phone: '9876543210',
-        hospitalSlug: 'test-clinic',
-      })
-    )
-    const body = await res.json()
-
-    expect(res.status).toBe(403)
-    expect(body.error).toContain('not enabled')
-  })
-
-  it('returns 404 when patient not found', async () => {
-    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({
-      id: 'h1',
-      name: 'Test Clinic',
-      patientPortalEnabled: true,
-    } as any)
-    vi.mocked(prisma.patient.findFirst).mockResolvedValue(null)
-
-    const res = await sendOtpPOST(
-      makeReq('/api/patient-portal/auth/send-otp', 'POST', {
-        phone: '9876543210',
-        hospitalSlug: 'test-clinic',
-      })
-    )
-    const body = await res.json()
-
-    expect(res.status).toBe(404)
-    expect(body.error).toContain('No patient account')
-  })
-
-  it('returns 429 when rate limited (5+ OTPs in 10 min)', async () => {
-    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({
-      id: 'h1',
-      name: 'Test Clinic',
-      patientPortalEnabled: true,
-    } as any)
-    vi.mocked(prisma.patient.findFirst).mockResolvedValue({ id: 'p1', firstName: 'John' } as any)
-    vi.mocked(prisma.patientOTP.count).mockResolvedValue(5)
-
-    const res = await sendOtpPOST(
-      makeReq('/api/patient-portal/auth/send-otp', 'POST', {
-        phone: '9876543210',
-        hospitalSlug: 'test-clinic',
-      })
-    )
-    const body = await res.json()
-
-    expect(res.status).toBe(429)
-    expect(body.error).toContain('Too many OTP')
-  })
-
-  it('sends OTP successfully', async () => {
-    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({
-      id: 'h1',
-      name: 'Test Clinic',
-      patientPortalEnabled: true,
-    } as any)
-    vi.mocked(prisma.patient.findFirst).mockResolvedValue({ id: 'p1', firstName: 'John' } as any)
-    vi.mocked(prisma.patientOTP.count).mockResolvedValue(0)
-    vi.mocked(prisma.patientOTP.create).mockResolvedValue({} as any)
-
-    const res = await sendOtpPOST(
-      makeReq('/api/patient-portal/auth/send-otp', 'POST', {
-        phone: '9876543210',
-        hospitalSlug: 'test-clinic',
-      })
-    )
-    const body = await res.json()
-
     expect(res.status).toBe(200)
     expect(body.success).toBe(true)
-    expect(prisma.patientOTP.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          hospitalId: 'h1',
-          phone: '9876543210',
-          otp: '123456',
-        }),
-      })
+    expect(sendMock).not.toHaveBeenCalled()
+  })
+
+  it('returns a neutral response when the patient does not exist', async () => {
+    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({
+      id: 'h1',
+      patientPortalEnabled: true,
+      isActive: true,
+    } as any)
+    vi.mocked(prisma.patient.findFirst).mockResolvedValue(null)
+    const res = await sendOtpPOST(
+      makeReq('/api/patient-portal/auth/send-otp', 'POST', { phone: PHONE, hospitalSlug: 'c' })
     )
+    expect(res.status).toBe(200)
+    expect(sendMock).not.toHaveBeenCalled()
+    expect(prisma.patientOTP.create).not.toHaveBeenCalled()
+  })
+
+  it('does not send when the per-phone limit is reached, response stays neutral', async () => {
+    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({
+      id: 'h1',
+      patientPortalEnabled: true,
+      isActive: true,
+    } as any)
+    vi.mocked(prisma.patient.findFirst).mockResolvedValue({ id: 'p1' } as any)
+    vi.mocked(prisma.patientOTP.count)
+      .mockResolvedValueOnce(0) // limite IP
+      .mockResolvedValueOnce(5) // limite numéro
+    const res = await sendOtpPOST(
+      makeReq('/api/patient-portal/auth/send-otp', 'POST', { phone: PHONE, hospitalSlug: 'c' })
+    )
+    expect(res.status).toBe(200)
+    expect(sendMock).not.toHaveBeenCalled()
+  })
+
+  it('stores only a hash, normalises to +212, never returns the OTP', async () => {
+    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({
+      id: 'h1',
+      patientPortalEnabled: true,
+      isActive: true,
+    } as any)
+    vi.mocked(prisma.patient.findFirst).mockResolvedValue({ id: 'p1' } as any)
+    vi.mocked(prisma.patientOTP.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.patientOTP.create).mockResolvedValue({ id: 'otp1' } as any)
+
+    const res = await sendOtpPOST(
+      makeReq('/api/patient-portal/auth/send-otp', 'POST', { phone: PHONE, hospitalSlug: 'c' })
+    )
+    const text = JSON.stringify(await res.json())
+
+    expect(res.status).toBe(200)
+    expect(text).not.toContain('123456')
+    expect(prisma.patientOTP.updateMany).toHaveBeenCalled() // anciens OTP invalidés
+    const createArg = vi.mocked(prisma.patientOTP.create).mock.calls[0][0]
+    expect(createArg.data.phone).toBe(E164)
+    expect(createArg.data.otpHash).toBe('hash-123456')
+    expect(createArg.data).not.toHaveProperty('otp')
+    expect(sendMock).toHaveBeenCalledWith(expect.objectContaining({ to: E164, code: '123456' }))
   })
 })
 
@@ -166,129 +156,95 @@ describe('POST /api/patient-portal/auth/send-otp', () => {
 describe('POST /api/patient-portal/auth/verify-otp', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  const body = (otp = '123456') => ({ phone: PHONE, otp, hospitalSlug: 'c' })
+
   it('returns 400 when fields missing', async () => {
     const res = await verifyOtpPOST(
-      makeReq('/api/patient-portal/auth/verify-otp', 'POST', {
-        phone: '9876543210',
-      })
+      makeReq('/api/patient-portal/auth/verify-otp', 'POST', { phone: PHONE })
     )
-    const body = await res.json()
-
     expect(res.status).toBe(400)
-    expect(body.error).toContain('required')
   })
 
-  it('returns 404 when hospital not found', async () => {
+  it('returns the same generic error when the clinic does not exist', async () => {
     vi.mocked(prisma.hospital.findUnique).mockResolvedValue(null)
-
-    const res = await verifyOtpPOST(
-      makeReq('/api/patient-portal/auth/verify-otp', 'POST', {
-        phone: '9876543210',
-        otp: '123456',
-        hospitalSlug: 'nonexistent',
-      })
-    )
-
-    expect(res.status).toBe(404)
+    const res = await verifyOtpPOST(makeReq('/api/patient-portal/auth/verify-otp', 'POST', body()))
+    expect(res.status).toBe(400)
   })
 
   it('returns 400 when OTP expired or not found', async () => {
-    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({ id: 'h1', name: 'Clinic' } as any)
+    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({ id: 'h1' } as any)
     vi.mocked(prisma.patientOTP.findFirst).mockResolvedValue(null)
-
-    const res = await verifyOtpPOST(
-      makeReq('/api/patient-portal/auth/verify-otp', 'POST', {
-        phone: '9876543210',
-        otp: '999999',
-        hospitalSlug: 'test-clinic',
-      })
-    )
-    const body = await res.json()
-
+    const res = await verifyOtpPOST(makeReq('/api/patient-portal/auth/verify-otp', 'POST', body()))
     expect(res.status).toBe(400)
-    expect(body.error).toContain('expired')
   })
 
-  it('returns 429 when max attempts exceeded', async () => {
-    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({ id: 'h1', name: 'Clinic' } as any)
+  it('rejects when max attempts exceeded', async () => {
+    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({ id: 'h1' } as any)
     vi.mocked(prisma.patientOTP.findFirst).mockResolvedValue({
       id: 'otp1',
-      otp: '123456',
+      otpHash: 'hash-123456',
       attempts: 3,
-      verified: false,
     } as any)
-
-    const res = await verifyOtpPOST(
-      makeReq('/api/patient-portal/auth/verify-otp', 'POST', {
-        phone: '9876543210',
-        otp: '123456',
-        hospitalSlug: 'test-clinic',
-      })
-    )
-
-    expect(res.status).toBe(429)
+    const res = await verifyOtpPOST(makeReq('/api/patient-portal/auth/verify-otp', 'POST', body()))
+    expect(res.status).toBe(400)
+    expect(prisma.patientOTP.updateMany).not.toHaveBeenCalled()
   })
 
   it('increments attempts on wrong OTP', async () => {
-    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({ id: 'h1', name: 'Clinic' } as any)
+    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({ id: 'h1' } as any)
     vi.mocked(prisma.patientOTP.findFirst).mockResolvedValue({
       id: 'otp1',
-      otp: '123456',
+      otpHash: 'hash-123456',
       attempts: 1,
-      verified: false,
     } as any)
     vi.mocked(prisma.patientOTP.update).mockResolvedValue({} as any)
-
     const res = await verifyOtpPOST(
-      makeReq('/api/patient-portal/auth/verify-otp', 'POST', {
-        phone: '9876543210',
-        otp: '999999',
-        hospitalSlug: 'test-clinic',
-      })
+      makeReq('/api/patient-portal/auth/verify-otp', 'POST', body('999999'))
     )
-    const body = await res.json()
-
     expect(res.status).toBe(400)
-    expect(body.error).toContain('Invalid OTP')
     expect(prisma.patientOTP.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { attempts: { increment: 1 } },
-      })
+      expect.objectContaining({ data: { attempts: { increment: 1 } } })
     )
   })
 
-  it('verifies OTP and returns patient data', async () => {
-    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({ id: 'h1', name: 'Clinic' } as any)
+  it('rejects when the atomic consumption loses the race', async () => {
+    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({ id: 'h1' } as any)
     vi.mocked(prisma.patientOTP.findFirst).mockResolvedValue({
       id: 'otp1',
-      otp: '123456',
+      otpHash: 'hash-123456',
       attempts: 0,
-      verified: false,
     } as any)
-    vi.mocked(prisma.patientOTP.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.patientOTP.updateMany).mockResolvedValue({ count: 0 } as any)
+    const res = await verifyOtpPOST(makeReq('/api/patient-portal/auth/verify-otp', 'POST', body()))
+    expect(res.status).toBe(400)
+  })
+
+  it('verifies OTP and returns patient data', async () => {
+    vi.mocked(prisma.hospital.findUnique).mockResolvedValue({ id: 'h1' } as any)
+    vi.mocked(prisma.patientOTP.findFirst).mockResolvedValue({
+      id: 'otp1',
+      otpHash: 'hash-123456',
+      attempts: 0,
+    } as any)
+    vi.mocked(prisma.patientOTP.updateMany).mockResolvedValue({ count: 1 } as any)
     vi.mocked(prisma.patient.findFirst).mockResolvedValue({
       id: 'p1',
       hospitalId: 'h1',
       patientId: 'PT001',
       firstName: 'John',
       lastName: 'Doe',
-      phone: '9876543210',
+      phone: PHONE,
       email: 'john@example.com',
+      portalSessionVersion: 2,
     } as any)
 
-    const res = await verifyOtpPOST(
-      makeReq('/api/patient-portal/auth/verify-otp', 'POST', {
-        phone: '9876543210',
-        otp: '123456',
-        hospitalSlug: 'test-clinic',
-      })
-    )
-    const body = await res.json()
+    const res = await verifyOtpPOST(makeReq('/api/patient-portal/auth/verify-otp', 'POST', body()))
+    const json = await res.json()
 
     expect(res.status).toBe(200)
-    expect(body.success).toBe(true)
-    expect(body.patient.name).toBe('John Doe')
-    expect(body.patient.patientId).toBe('PT001')
+    expect(json.success).toBe(true)
+    expect(json.patient.name).toBe('John Doe')
+    expect(json.patient.patientId).toBe('PT001')
   })
 })
 
@@ -301,8 +257,6 @@ describe('POST /api/patient-portal/auth/logout', () => {
 
   it('clears patient cookie', async () => {
     const res = await logoutPOST(makeReq('/api/patient-portal/auth/logout', 'POST'))
-    const body = await res.json()
-
     expect(res.status).toBe(200)
   })
 })

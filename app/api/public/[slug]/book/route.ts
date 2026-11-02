@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getClientIp, rateLimit, tooManyRequests } from '@/lib/security/rate-limit'
 
 /**
  * POST: Public booking endpoint.
@@ -9,6 +10,9 @@ import { prisma } from '@/lib/prisma'
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params
+    const limit = rateLimit('public-book-ip:' + getClientIp(req), 10, 10 * 60 * 1000)
+    if (!limit.allowed) return tooManyRequests(limit.retryAfterSeconds)
+
     const body = await req.json()
     const { phone, doctorId, date, time, type, chiefComplaint } = body as {
       phone: string

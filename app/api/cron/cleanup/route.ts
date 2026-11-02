@@ -13,15 +13,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
 
 const RETENTION_DAYS = 90
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = requireCronAuth(req)
+  if (unauthorized) return unauthorized
 
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000)
 
