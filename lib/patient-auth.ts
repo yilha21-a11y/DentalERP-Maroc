@@ -38,7 +38,11 @@ export async function hashOTP(otp: string): Promise<string> {
 }
 
 export async function verifyOTPHash(otp: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(otp, hash)
+  try {
+    return await bcrypt.compare(otp, hash)
+  } catch {
+    return false
+  }
 }
 
 /**
