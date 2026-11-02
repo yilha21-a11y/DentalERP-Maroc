@@ -1,33 +1,29 @@
 {
-  "name": "dental-erp",
+  "name": "dentalerp-maroc",
   "version": "1.0.0",
-  "description": "Open-source dental hospital management system for Indian dental clinics — AI-powered, GST billing, patient portal, tele-dentistry",
+  "description": "Solution de gestion de cabinet dentaire adaptée au Maroc — patients, rendez-vous, facturation en MAD, stock, laboratoire et communications.",
   "private": true,
   "keywords": [
-    "dental-software",
-    "hospital-management-system",
+    "logiciel-dentaire-maroc",
+    "gestion-cabinet-dentaire",
     "dental-erp",
-    "dental-clinic",
     "nextjs",
     "prisma",
-    "india",
-    "gst-billing",
     "patient-management",
     "appointment-scheduling",
-    "open-source",
-    "ai-powered",
-    "tele-dentistry",
-    "dental-practice-management"
+    "mad",
+    "maroc",
+    "open-source"
   ],
   "author": "Abinauv Selvaraj",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/abinauv/dental-erp.git"
+    "url": "https://github.com/yilha21-a11y/DentalERP-Maroc.git"
   },
-  "homepage": "https://github.com/abinauv/dental-erp",
+  "homepage": "https://github.com/yilha21-a11y/DentalERP-Maroc",
   "bugs": {
-    "url": "https://github.com/abinauv/dental-erp/issues"
+    "url": "https://github.com/yilha21-a11y/DentalERP-Maroc/issues"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -55,7 +51,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm run test && npm run test:e2e",
-    "prepare": "husky"
+    "prepare": "husky",
+    "audit:fr-maroc": "node scripts/audit-fr-maroc.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",

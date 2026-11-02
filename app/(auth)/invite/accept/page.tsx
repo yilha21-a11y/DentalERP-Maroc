@@ -16,12 +16,12 @@ import { useToast } from '@/hooks/use-toast'
 
 const acceptInviteSchema = z
   .object({
-    password: z.string().min(8, 'Password must be at least 8 characters'),
+    password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
     confirmPassword: z.string(),
-    phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+    phone: z.string().min(10, 'Veuillez saisir un numéro de téléphone valide'),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
+    message: 'Les mots de passe ne correspondent pas',
     path: ['confirmPassword'],
   })
 
@@ -31,7 +31,7 @@ type InviteData = {
   email: string
   name: string
   role: string
-  hospitalName: string
+  hospitalNom : string
   expiresAt: string
 }
 
@@ -59,7 +59,7 @@ function AcceptInviteContent() {
       validateToken(token)
     } else {
       setStatus('invalid')
-      setErrorMessage('No invite token provided.')
+      setErrorMessage('Aucun jeton d’invitation fourni.')
     }
   }, [token])
 
@@ -73,11 +73,11 @@ function AcceptInviteContent() {
         setInviteData(result.invite)
       } else {
         setStatus('invalid')
-        setErrorMessage(result.error || 'Invalid invite link.')
+        setErrorMessage(result.error || 'Lien d’invitation invalide.')
       }
     } catch {
       setStatus('invalid')
-      setErrorMessage('An error occurred. Please try again.')
+      setErrorMessage('Une erreur est survenue. Veuillez réessayer.')
     }
   }
 
@@ -102,21 +102,21 @@ function AcceptInviteContent() {
       if (response.ok) {
         setStatus('success')
         toast({
-          title: 'Account created!',
-          description: 'You can now log in to your account.',
+          title: 'Compte créé',
+          description: 'Vous pouvez maintenant vous connecter à votre compte.',
         })
       } else {
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: result.error || 'Something went wrong. Please try again.',
+          description: result.error || 'Une erreur est survenue. Veuillez réessayer.',
         })
       }
     } catch {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Something went wrong. Please try again.',
+        description: 'Une erreur est survenue. Veuillez réessayer.',
       })
     } finally {
       setIsSubmitting(false)
@@ -136,8 +136,8 @@ function AcceptInviteContent() {
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Validating Invite</CardTitle>
-          <CardDescription>Please wait...</CardDescription>
+          <CardTitle className="text-2xl font-bold">Vérification de l’invitation</CardTitle>
+          <CardDescription>Veuillez patienter…</CardDescription>
         </CardHeader>
       </Card>
     )
@@ -152,12 +152,12 @@ function AcceptInviteContent() {
               <XCircle className="h-6 w-6 text-red-600" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Invalid Invite</CardTitle>
+          <CardTitle className="text-2xl font-bold">Invitation invalide</CardTitle>
           <CardDescription>{errorMessage}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild variant="outline" className="w-full">
-            <Link href="/login">Go to Login</Link>
+            <Link href="/login">Aller à la connexion</Link>
           </Button>
         </CardContent>
       </Card>
@@ -173,15 +173,15 @@ function AcceptInviteContent() {
               <CheckCircle2 className="h-6 w-6 text-green-600" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome Aboard!</CardTitle>
+          <CardTitle className="text-2xl font-bold">Bienvenue</CardTitle>
           <CardDescription>
-            Your account has been created successfully. You can now log in to{' '}
+            Votre compte a été créé. Vous pouvez maintenant vous connecter à{' '}
             {inviteData?.hospitalName}.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild className="w-full">
-            <Link href="/login">Continue to Login</Link>
+            <Link href="/login">Continuer vers la connexion</Link>
           </Button>
         </CardContent>
       </Card>
@@ -196,7 +196,7 @@ function AcceptInviteContent() {
             <UserPlus className="h-6 w-6" />
           </div>
         </div>
-        <CardTitle className="text-2xl font-bold">Join {inviteData?.hospitalName}</CardTitle>
+        <CardTitle className="text-2xl font-bold">Rejoindre {inviteData?.hospitalName}</CardTitle>
         <CardDescription>
           You&apos;ve been invited to join as a{' '}
           <Badge variant="secondary">{formatRole(inviteData?.role || '')}</Badge>
@@ -206,11 +206,11 @@ function AcceptInviteContent() {
         <div className="mb-6 p-4 bg-muted rounded-lg">
           <div className="text-sm space-y-1">
             <p>
-              <span className="text-muted-foreground">Name:</span>{' '}
+              <span className="text-muted-foreground">Nom :</span>{' '}
               <span className="font-medium">{inviteData?.name}</span>
             </p>
             <p>
-              <span className="text-muted-foreground">Email:</span>{' '}
+              <span className="text-muted-foreground">E-mail :</span>{' '}
               <span className="font-medium">{inviteData?.email}</span>
             </p>
           </div>
@@ -218,11 +218,11 @@ function AcceptInviteContent() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="phone">Téléphone</Label>
             <Input
               id="phone"
               type="tel"
-              placeholder="9876543210"
+              placeholder="+212 6 00 00 00 00"
               {...register('phone')}
               disabled={isSubmitting}
             />
@@ -230,11 +230,11 @@ function AcceptInviteContent() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Create Password</Label>
+            <Label htmlFor="password">Créer un mot de passe</Label>
             <Input
               id="password"
               type="password"
-              placeholder="At least 8 characters"
+              placeholder="Au moins 8 caractères"
               {...register('password')}
               disabled={isSubmitting}
             />
@@ -244,11 +244,11 @@ function AcceptInviteContent() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
             <Input
               id="confirmPassword"
               type="password"
-              placeholder="Confirm your password"
+              placeholder="Confirmez votre mot de passe"
               {...register('confirmPassword')}
               disabled={isSubmitting}
             />
@@ -259,12 +259,12 @@ function AcceptInviteContent() {
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Account
+            Créer le compte
           </Button>
         </form>
 
         <div className="mt-4 text-center text-xs text-muted-foreground">
-          By creating an account, you agree to our Terms of Service and Privacy Policy.
+          En créant un compte, vous acceptez les conditions d’utilisation et la politique de confidentialité.
         </div>
       </CardContent>
     </Card>
