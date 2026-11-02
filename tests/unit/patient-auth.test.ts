@@ -48,6 +48,7 @@ describe('patient portal security helpers', () => {
         patientId: 'patient-1',
         hospitalId: 'hospital-1',
         phone: '+212600000000',
+        authVersion: 0,
       })
     ).rejects.toThrow(/PATIENT_JWT_SECRET/)
   })
@@ -59,6 +60,7 @@ describe('patient portal security helpers', () => {
       patientId: 'patient-1',
       hospitalId: 'hospital-1',
       phone: '+212600000000',
+      authVersion: 0,
     })
 
     expect(token.split('.')).toHaveLength(3)
