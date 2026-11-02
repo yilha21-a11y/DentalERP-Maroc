@@ -90,7 +90,7 @@ function makeParams(id: string) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 1. GET /api/settings/billing/gateway
+// 1–2. Legacy online payment gateway is disabled for Morocco
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('GET /api/settings/billing/gateway', () => {
@@ -102,160 +102,33 @@ describe('GET /api/settings/billing/gateway', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns null config when no gateway configured', async () => {
+  it('returns a disabled Morocco configuration for admins', async () => {
     mockAuth()
-    vi.mocked(prisma.paymentGatewayConfig.findUnique).mockResolvedValue(null)
     const res = await gatewayGET()
     const body = await res.json()
-    expect(body.config).toBeNull()
-  })
-
-  it('returns config with masked secrets for Razorpay', async () => {
-    mockAuth()
-    vi.mocked(prisma.paymentGatewayConfig.findUnique).mockResolvedValue({
-      provider: 'RAZORPAY',
-      isEnabled: true,
-      isLiveMode: false,
-      razorpayKeyId: 'rzp_test_abc123',
-      razorpayKeySecret: 'enc_secret_key_xyz',
-      phonepeMerchantId: null,
-      phonepeSaltKey: null,
-      phonepeSaltIndex: null,
-      paytmMid: null,
-      paytmMerchantKey: null,
-      paytmWebsite: null,
-    } as any)
-
-    const res = await gatewayGET()
-    const body = await res.json()
-
-    expect(body.config.provider).toBe('RAZORPAY')
-    expect(body.config.isEnabled).toBe(true)
-    expect(body.config.razorpayKeySecret).toMatch(/^\*\*\*\*/)
-    expect(body.config.webhookUrl).toContain('/api/webhooks/payment/razorpay')
-  })
-
-  it('masks PhonePe salt key', async () => {
-    mockAuth()
-    vi.mocked(prisma.paymentGatewayConfig.findUnique).mockResolvedValue({
-      provider: 'PHONEPE',
-      isEnabled: true,
-      isLiveMode: true,
-      razorpayKeyId: null,
-      razorpayKeySecret: null,
-      phonepeMerchantId: 'MERCHANT123',
-      phonepeSaltKey: 'enc_salt_key_12345',
-      phonepeSaltIndex: '1',
-      paytmMid: null,
-      paytmMerchantKey: null,
-      paytmWebsite: null,
-    } as any)
-
-    const res = await gatewayGET()
-    const body = await res.json()
-
-    expect(body.config.provider).toBe('PHONEPE')
-    expect(body.config.phonepeSaltKey).toMatch(/^\*\*\*\*/)
+    expect(res.status).toBe(200)
+    expect(body.config.isEnabled).toBe(false)
+    expect(body.config.country).toBe('MA')
+    expect(body.config.currency).toBe('MAD')
+    expect(body.config.provider).toBeNull()
   })
 })
-
-// ═════════════════════════════════════════════════════════════════════════════
-// 2. PUT /api/settings/billing/gateway
-// ═════════════════════════════════════════════════════════════════════════════
 
 describe('PUT /api/settings/billing/gateway', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns 401 when unauthenticated', async () => {
     mockAuthError()
-    const res = await gatewayPUT(
-      makeReq('/api/settings/billing/gateway', 'PUT', { provider: 'RAZORPAY' })
-    )
+    const res = await gatewayPUT()
     expect(res.status).toBe(401)
   })
 
-  it('returns 400 for invalid provider', async () => {
+  it('fails closed while no Moroccan gateway is integrated', async () => {
     mockAuth()
-    const res = await gatewayPUT(
-      makeReq('/api/settings/billing/gateway', 'PUT', { provider: 'STRIPE' })
-    )
+    const res = await gatewayPUT()
     const body = await res.json()
-    expect(res.status).toBe(400)
-    expect(body.error).toContain('provider')
-  })
-
-  it('creates Razorpay config with encrypted secret', async () => {
-    mockAuth()
-    vi.mocked(prisma.paymentGatewayConfig.findUnique).mockResolvedValue(null)
-    vi.mocked(prisma.paymentGatewayConfig.upsert).mockResolvedValue({
-      provider: 'RAZORPAY',
-      isEnabled: true,
-      isLiveMode: false,
-    } as any)
-
-    const res = await gatewayPUT(
-      makeReq('/api/settings/billing/gateway', 'PUT', {
-        provider: 'RAZORPAY',
-        isEnabled: true,
-        razorpayKeyId: 'rzp_test_123',
-        razorpayKeySecret: 'my_secret_key',
-      })
-    )
-    const body = await res.json()
-
-    expect(body.success).toBe(true)
-    expect(mockEncrypt).toHaveBeenCalledWith('my_secret_key')
-    expect(prisma.paymentGatewayConfig.upsert).toHaveBeenCalled()
-  })
-
-  it('preserves existing secret when masked value sent', async () => {
-    mockAuth()
-    vi.mocked(prisma.paymentGatewayConfig.findUnique).mockResolvedValue({
-      provider: 'RAZORPAY',
-      razorpayKeySecret: 'enc_old_secret',
-    } as any)
-    vi.mocked(prisma.paymentGatewayConfig.upsert).mockResolvedValue({
-      provider: 'RAZORPAY',
-      isEnabled: true,
-      isLiveMode: false,
-    } as any)
-
-    const res = await gatewayPUT(
-      makeReq('/api/settings/billing/gateway', 'PUT', {
-        provider: 'RAZORPAY',
-        isEnabled: true,
-        razorpayKeyId: 'rzp_test_123',
-        razorpayKeySecret: '****cret',
-      })
-    )
-
-    expect(mockEncrypt).not.toHaveBeenCalled()
-    const upsertCall = vi.mocked(prisma.paymentGatewayConfig.upsert).mock.calls[0][0] as any
-    expect(upsertCall.update.razorpayKeySecret).toBe('enc_old_secret')
-  })
-
-  it('clears other provider fields when switching provider', async () => {
-    mockAuth()
-    vi.mocked(prisma.paymentGatewayConfig.findUnique).mockResolvedValue(null)
-    vi.mocked(prisma.paymentGatewayConfig.upsert).mockResolvedValue({
-      provider: 'PAYTM',
-      isEnabled: true,
-      isLiveMode: false,
-    } as any)
-
-    await gatewayPUT(
-      makeReq('/api/settings/billing/gateway', 'PUT', {
-        provider: 'PAYTM',
-        paytmMid: 'MID123',
-        paytmMerchantKey: 'key123',
-        paytmWebsite: 'WEBSTAGING',
-      })
-    )
-
-    const upsertCall = vi.mocked(prisma.paymentGatewayConfig.upsert).mock.calls[0][0] as any
-    expect(upsertCall.update.razorpayKeyId).toBeNull()
-    expect(upsertCall.update.razorpayKeySecret).toBeNull()
-    expect(upsertCall.update.phonepeMerchantId).toBeNull()
+    expect(res.status).toBe(410)
+    expect(body.code).toBe('ONLINE_PAYMENT_NOT_CONFIGURED_MA')
   })
 })
 
