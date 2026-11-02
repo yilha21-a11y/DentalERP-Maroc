@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { SignJWT } from 'jose'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -29,6 +30,18 @@ export async function POST(req: NextRequest) {
 
     const email = validated.data.email.trim().toLowerCase()
     const { password } = validated.data
+
+    const rate = await checkRateLimit(
+      `mobile-login:${getClientIp(req)}:${email}`,
+      10,
+      15 * 60 * 1000
+    )
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de tentatives. Réessayez plus tard.' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } }
+      )
+    }
 
     const user = await prisma.user.findUnique({
       where: { email },
