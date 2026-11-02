@@ -61,11 +61,31 @@ export async function getAuthenticatedHospital() {
   // Try NextAuth session first (web)
   const session = await auth()
 
-  if (session?.user) {
-    return {
-      error: null,
-      user: session.user,
-      hospitalId: session.user.hospitalId,
+  if (session?.user?.id && session.user.hospitalId) {
+    const currentUser = await prisma.user.findFirst({
+      where: {
+        id: session.user.id,
+        hospitalId: session.user.hospitalId,
+        isActive: true,
+        hospital: { isActive: true },
+      },
+      include: { staff: true },
+    })
+
+    if (currentUser) {
+      return {
+        error: null,
+        user: {
+          id: currentUser.id,
+          email: currentUser.email,
+          name: currentUser.name,
+          role: currentUser.role,
+          staffId: currentUser.staff?.id,
+          hospitalId: currentUser.hospitalId,
+          isHospitalAdmin: currentUser.isHospitalAdmin,
+        },
+        hospitalId: currentUser.hospitalId,
+      }
     }
   }
 
