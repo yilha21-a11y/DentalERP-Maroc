@@ -34,15 +34,18 @@ export async function GET(req: Request) {
   }
 
   for (const appt of appointments) {
-    const existing = await prisma.$queryRaw<Array<{ id: string }>>`
-      SELECT id
-      FROM WhatsAppLog
-      WHERE appointmentId = ${appt.id}
-        AND templateName = ${templateName}
-        AND status = 'SENT'
-      LIMIT 1
-    `
-    if (existing.length) { skipped++; continue }
+    const existing = await prisma.whatsAppLog.findFirst({
+      where: {
+        appointmentId: appt.id,
+        templateName,
+        status: 'SENT',
+      },
+      select: { id: true },
+    })
+    if (existing) {
+      skipped++
+      continue
+    }
 
     try {
       await sendWhatsAppTemplate({
