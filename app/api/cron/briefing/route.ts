@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { complete } from '@/lib/ai/openrouter'
 import { getModelByTier } from '@/lib/ai/models'
+import { requireCronAuth } from '@/lib/cron-auth'
 
 /**
  * GET /api/cron/briefing
