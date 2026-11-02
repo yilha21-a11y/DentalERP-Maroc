@@ -1,31 +1,42 @@
+import { randomBytes } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
-import { StaffInviteStatus, Role } from '@prisma/client'
+import { StaffInviteStatus } from '@prisma/client'
+import { normalizeMoroccoPhone } from '@/lib/services/whatsapp.service'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 const acceptInviteSchema = z.object({
-  token: z.string().min(1, 'Token is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  token: z.string().min(16).max(256),
+  password: z.string().min(8).max(200),
+  phone: z.string().trim().min(8).max(30),
 })
 
-// Accept an invite and create user account
+const tokenSchema = z.string().min(16).max(256)
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const validated = acceptInviteSchema.safeParse(body)
-
+    const validated = acceptInviteSchema.safeParse(await request.json())
     if (!validated.success) {
+      return NextResponse.json({ error: 'Données d’invitation invalides' }, { status: 400 })
+    }
+
+    const rate = await checkRateLimit(
+      `invite-accept:${getClientIp(request)}`,
+      20,
+      15 * 60 * 1000
+    )
+    if (!rate.allowed) {
       return NextResponse.json(
-        { error: 'Validation failed', details: validated.error.flatten() },
-        { status: 400 }
+        { error: 'Trop de tentatives. Réessayez plus tard.' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } }
       )
     }
 
-    const { token, password, phone } = validated.data
+    const { token, password } = validated.data
+    const phone = `+${normalizeMoroccoPhone(validated.data.phone)}`
 
-    // Find the invite
     const invite = await prisma.staffInvite.findUnique({
       where: { token },
       include: {
@@ -35,75 +46,56 @@ export async function POST(request: Request) {
       },
     })
 
-    if (!invite) {
-      return NextResponse.json({ error: 'Invalid invite token' }, { status: 400 })
+    if (
+      !invite ||
+      invite.status !== StaffInviteStatus.PENDING ||
+      new Date() > invite.expiresAt ||
+      !invite.hospital.isActive
+    ) {
+      if (
+        invite &&
+        invite.status === StaffInviteStatus.PENDING &&
+        new Date() > invite.expiresAt
+      ) {
+        await prisma.staffInvite.update({
+          where: { id: invite.id },
+          data: { status: StaffInviteStatus.EXPIRED },
+        })
+      }
+      return NextResponse.json({ error: 'Invitation invalide ou expirée' }, { status: 400 })
     }
 
-    if (invite.status !== StaffInviteStatus.PENDING) {
-      return NextResponse.json(
-        { error: 'This invite has already been used or cancelled' },
-        { status: 400 }
-      )
-    }
-
-    if (new Date() > invite.expiresAt) {
-      await prisma.staffInvite.update({
-        where: { id: invite.id },
-        data: { status: StaffInviteStatus.EXPIRED },
-      })
-      return NextResponse.json(
-        { error: 'This invite has expired. Please ask for a new invite.' },
-        { status: 400 }
-      )
-    }
-
-    if (!invite.hospital.isActive) {
-      return NextResponse.json(
-        { error: 'This hospital account is no longer active' },
-        { status: 400 }
-      )
-    }
-
-    // Check if email already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: invite.email },
+      select: { id: true },
     })
-
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'An account with this email already exists' },
-        { status: 409 }
-      )
+      return NextResponse.json({ error: 'Cette invitation ne peut plus être utilisée' }, { status: 409 })
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(password, 12)
+    const employeeId = `EMP-${randomBytes(4).toString('hex').toUpperCase()}`
+    const displayName = invite.name ?? invite.email.split('@')[0]
+    const nameParts = displayName.split(/\s+/).filter(Boolean)
 
-    // Generate employee ID
-    const staffCount = await prisma.staff.count({
-      where: { hospitalId: invite.hospitalId },
-    })
-    const employeeId = `EMP${String(staffCount + 1).padStart(3, '0')}`
-
-    // Create user and staff in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Create the user
-      const user = await tx.user.create({
+    await prisma.$transaction(async (tx) => {
+      await tx.user.create({
         data: {
-          email: invite.email,
-          name: invite.name ?? invite.email.split('@')[0],
+          email: invite.email.toLowerCase(),
+          name: displayName,
           password: hashedPassword,
           phone,
-          role: invite.role as Role,
+          role: invite.role,
           isActive: true,
           isHospitalAdmin: false,
           hospitalId: invite.hospitalId,
+          locale: 'fr-MA',
           staff: {
             create: {
               employeeId,
-              firstName: (invite.name ?? invite.email.split('@')[0]).split(' ')[0],
-              lastName: (invite.name ?? '').split(' ').slice(1).join(' ') || '',
-              email: invite.email,
+              firstName: nameParts[0] || displayName,
+              lastName: nameParts.slice(1).join(' '),
+              email: invite.email.toLowerCase(),
               phone,
               hospitalId: invite.hospitalId,
             },
@@ -111,38 +103,45 @@ export async function POST(request: Request) {
         },
       })
 
-      // Mark invite as accepted
       await tx.staffInvite.update({
         where: { id: invite.id },
         data: { status: StaffInviteStatus.ACCEPTED },
       })
-
-      return user
     })
 
     return NextResponse.json({
       success: true,
-      message: 'Account created successfully. You can now log in.',
+      message: 'Compte créé. Vous pouvez maintenant vous connecter.',
       hospitalName: invite.hospital.name,
     })
   } catch (error) {
     console.error('Accept invite error:', error)
-    return NextResponse.json({ error: 'An error occurred. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Impossible d’accepter l’invitation' }, { status: 500 })
   }
 }
 
-// GET endpoint to validate token and get invite details
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const token = searchParams.get('token')
+    const rate = await checkRateLimit(
+      `invite-check:${getClientIp(request)}`,
+      60,
+      15 * 60 * 1000
+    )
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { valid: false, error: 'Trop de tentatives' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } }
+      )
+    }
 
-    if (!token) {
-      return NextResponse.json({ error: 'Token is required' }, { status: 400 })
+    const token = new URL(request.url).searchParams.get('token')
+    const parsed = tokenSchema.safeParse(token)
+    if (!parsed.success) {
+      return NextResponse.json({ valid: false, error: 'Invitation invalide' }, { status: 400 })
     }
 
     const invite = await prisma.staffInvite.findUnique({
-      where: { token },
+      where: { token: parsed.data },
       include: {
         hospital: {
           select: { name: true, isActive: true },
@@ -150,26 +149,13 @@ export async function GET(request: Request) {
       },
     })
 
-    if (!invite) {
-      return NextResponse.json({ valid: false, error: 'Invalid invite token' }, { status: 400 })
-    }
-
-    if (invite.status !== StaffInviteStatus.PENDING) {
-      return NextResponse.json(
-        { valid: false, error: 'This invite has already been used or cancelled' },
-        { status: 400 }
-      )
-    }
-
-    if (new Date() > invite.expiresAt) {
-      return NextResponse.json({ valid: false, error: 'This invite has expired' }, { status: 400 })
-    }
-
-    if (!invite.hospital.isActive) {
-      return NextResponse.json(
-        { valid: false, error: 'This hospital account is no longer active' },
-        { status: 400 }
-      )
+    if (
+      !invite ||
+      invite.status !== StaffInviteStatus.PENDING ||
+      new Date() > invite.expiresAt ||
+      !invite.hospital.isActive
+    ) {
+      return NextResponse.json({ valid: false, error: 'Invitation invalide ou expirée' }, { status: 400 })
     }
 
     return NextResponse.json({
@@ -184,6 +170,6 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('Validate invite error:', error)
-    return NextResponse.json({ error: 'An error occurred. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Vérification de l’invitation impossible' }, { status: 500 })
   }
 }
