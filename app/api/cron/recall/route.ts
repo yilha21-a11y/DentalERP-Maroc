@@ -4,7 +4,7 @@ import { requireCronAuth } from '@/lib/cron-auth'
 
 /**
  * GET /api/cron/recall
- * Scheduled: weekly (Monday 07:00 IST)
+ * Scheduled: weekly (Monday 07:00 (Africa/Casablanca))
  * Identifies patients who need to be recalled:
  *   1. No visit in 6+ months
  *   2. Incomplete treatment plans
@@ -12,10 +12,8 @@ import { requireCronAuth } from '@/lib/cron-auth'
  * Creates AIInsight records and notifications for ADMIN.
  */
 export async function GET(req: Request) {
-  const secret = req.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireCronAuth(req)
+  if (authError) return authError
 
   const now = new Date()
   const sixMonthsAgo = new Date()
