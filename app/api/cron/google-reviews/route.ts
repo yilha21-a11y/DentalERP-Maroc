@@ -4,10 +4,8 @@ import { sendWhatsAppTemplate } from '@/lib/services/whatsapp.service'
 import { requireCronAuth } from '@/lib/cron-auth'
 
 export async function GET(req: Request) {
-  const secret = req.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-  }
+  const authError = requireCronAuth(req)
+  if (authError) return authError
 
   const now = new Date()
   const from = new Date(now.getTime() - 4 * 60 * 60 * 1000)
@@ -36,11 +34,14 @@ export async function GET(req: Request) {
   }
 
   for (const appt of appointments) {
-    const existing = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT id FROM WhatsAppLog WHERE appointmentId=? AND templateName=? AND status='SENT' LIMIT 1`,
-      appt.id,
-      templateName
-    )
+    const existing = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM WhatsAppLog
+      WHERE appointmentId = ${appt.id}
+        AND templateName = ${templateName}
+        AND status = 'SENT'
+      LIMIT 1
+    `
     if (existing.length) { skipped++; continue }
 
     try {
