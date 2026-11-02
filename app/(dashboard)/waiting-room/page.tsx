@@ -31,6 +31,7 @@ export default function WaitingRoomManagementPage() {
   const [items, setItems] = useState<QueueItem[]>([])
   const [rooms, setRooms] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [openingDisplay, setOpeningDisplay] = useState(false)
 
   const load = useCallback(async () => {
     const res = await fetch('/api/waiting-room', { cache: 'no-store' })
@@ -56,6 +57,20 @@ export default function WaitingRoomManagementPage() {
     load()
   }
 
+  const openDisplay = async () => {
+    setOpeningDisplay(true)
+    try {
+      const res = await fetch('/api/waiting-room/display-token', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || 'Écran TV indisponible')
+      window.open(data.url, '_blank', 'noopener,noreferrer')
+    } catch {
+      // L'écran de gestion continue de fonctionner même si le jeton TV ne peut pas être créé.
+    } finally {
+      setOpeningDisplay(false)
+    }
+  }
+
   const waiting = items.filter((x) => x.status === 'WAITING')
   const active = items.filter((x) => x.status === 'CALLED' || x.status === 'IN_CONSULTATION')
   const completed = items.filter((x) => x.status === 'COMPLETED')
@@ -67,8 +82,9 @@ export default function WaitingRoomManagementPage() {
           <h1 className="text-3xl font-bold">Salle d’attente</h1>
           <p className="text-muted-foreground">Gestion en temps réel de l’accueil jusqu’à la consultation.</p>
         </div>
-        <Button variant="outline" asChild>
-          <a href="/waiting-room-display" target="_blank" rel="noreferrer"><Monitor className="mr-2 h-4 w-4" />Écran TV</a>
+        <Button variant="outline" onClick={openDisplay} disabled={openingDisplay}>
+          <Monitor className="mr-2 h-4 w-4" />
+          {openingDisplay ? 'Ouverture…' : 'Écran TV'}
         </Button>
       </div>
 
